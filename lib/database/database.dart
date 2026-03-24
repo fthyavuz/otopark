@@ -84,6 +84,9 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
 
+  Future<Tariff?> getTariffById(int id) =>
+      (select(tariffs)..where((t) => t.id.equals(id))).getSingleOrNull();
+
   // ─── Parking record queries ───────────────────────────────────────────────
 
   Stream<List<ParkingRecord>> watchInsideCars() =>
@@ -121,6 +124,24 @@ class AppDatabase extends _$AppDatabase {
 
   Future<bool> updateParkingRecord(ParkingRecordsCompanion entry) =>
       update(parkingRecords).replace(entry);
+
+  /// Marks a car as exited and saves the billing result.
+  Future<void> exitCar({
+    required int recordId,
+    required DateTime exitTime,
+    required double calculatedCost,
+    required String tariffNameSnapshot,
+    required bool isSubscriber,
+  }) =>
+      (update(parkingRecords)..where((r) => r.id.equals(recordId))).write(
+        ParkingRecordsCompanion(
+          exitTime: Value(exitTime),
+          calculatedCost: Value(calculatedCost),
+          tariffNameSnapshot: Value(tariffNameSnapshot),
+          isSubscriber: Value(isSubscriber),
+          status: const Value('exited'),
+        ),
+      );
 
   Future<List<ParkingRecord>> getRecordsByDateRange(
           DateTime from, DateTime to) =>
