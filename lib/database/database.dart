@@ -49,22 +49,40 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<Tariff>> watchAllTariffs() =>
       (select(tariffs)..orderBy([(t) => OrderingTerm.desc(t.validFrom)])).watch();
 
+  Stream<Tariff?> watchActiveTariff() =>
+      (select(tariffs)..where((t) => t.isActive.equals(true))..limit(1))
+          .watchSingleOrNull();
+
   Future<Tariff?> getActiveTariff() =>
       (select(tariffs)..where((t) => t.isActive.equals(true))..limit(1))
           .getSingleOrNull();
 
-  Future<int> insertTariff(TariffsCompanion entry) =>
-      into(tariffs).insert(entry);
+  /// Archives the current active tariff and inserts [newTariff] as active.
+  Future<void> switchToNewTariff(TariffsCompanion newTariff) async {
+    await transaction(() async {
+      await (update(tariffs)..where((t) => t.isActive.equals(true))).write(
+        TariffsCompanion(
+          isActive: const Value(false),
+          validTo: Value(DateTime.now()),
+        ),
+      );
+      await into(tariffs).insert(newTariff);
+    });
+  }
 
-  Future<bool> updateTariff(TariffsCompanion entry) =>
-      update(tariffs).replace(entry);
+  /// Updates the active tariff in place (no archiving).
+  Future<void> editActiveTariff(TariffsCompanion updated) async {
+    await (update(tariffs)..where((t) => t.id.equals(updated.id.value)))
+        .write(updated);
+  }
 
-  Future<int> deactivateTariff(int id) => (update(tariffs)
-        ..where((t) => t.id.equals(id)))
-      .write(TariffsCompanion(
-        isActive: const Value(false),
-        validTo: Value(DateTime.now()),
-      ));
+  Future<int> deactivateTariff(int id) =>
+      (update(tariffs)..where((t) => t.id.equals(id))).write(
+        TariffsCompanion(
+          isActive: const Value(false),
+          validTo: Value(DateTime.now()),
+        ),
+      );
 
   // ─── Parking record queries ───────────────────────────────────────────────
 
@@ -73,6 +91,23 @@ class AppDatabase extends _$AppDatabase {
             ..where((r) => r.status.equals('inside'))
             ..orderBy([(r) => OrderingTerm.asc(r.entryTime)]))
           .watch();
+
+  Stream<int> watchInsideCarsCount() =>
+      watchInsideCars().map((list) => list.length);
+
+  Stream<double> watchTodayRevenue() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    return (select(parkingRecords)
+          ..where((r) =>
+              r.exitTime.isBiggerOrEqualValue(today) &
+              r.exitTime.isSmallerOrEqualValue(tomorrow) &
+              r.status.equals('exited')))
+        .watch()
+        .map((list) =>
+            list.fold(0.0, (sum, r) => sum + (r.calculatedCost ?? 0.0)));
+  }
 
   Future<ParkingRecord?> getRecordByPlate(String plate) =>
       (select(parkingRecords)
@@ -88,7 +123,7 @@ class AppDatabase extends _$AppDatabase {
       update(parkingRecords).replace(entry);
 
   Future<List<ParkingRecord>> getRecordsByDateRange(
-      DateTime from, DateTime to) =>
+          DateTime from, DateTime to) =>
       (select(parkingRecords)
             ..where((r) =>
                 r.exitTime.isBiggerOrEqualValue(from) &
@@ -99,8 +134,7 @@ class AppDatabase extends _$AppDatabase {
   // ─── Subscriber queries ───────────────────────────────────────────────────
 
   Stream<List<Subscriber>> watchAllSubscribers() =>
-      (select(subscribers)
-            ..orderBy([(s) => OrderingTerm.desc(s.startDate)]))
+      (select(subscribers)..orderBy([(s) => OrderingTerm.desc(s.startDate)]))
           .watch();
 
   Future<int> insertSubscriber(SubscribersCompanion entry) =>
@@ -109,32 +143,32 @@ class AppDatabase extends _$AppDatabase {
   Future<bool> updateSubscriber(SubscribersCompanion entry) =>
       update(subscribers).replace(entry);
 
+  Future<int> deleteSubscriber(int id) =>
+      (delete(subscribers)..where((s) => s.id.equals(id))).go();
+
   Future<List<SubscriberPlate>> getPlatesForSubscriber(int subscriberId) =>
       (select(subscriberPlates)
-            ..where((p) => p.subscriberId.equals(subscriberId)))
+            ..where((sp) => sp.subscriberId.equals(subscriberId)))
           .get();
 
   Stream<List<SubscriberPlate>> watchPlatesForSubscriber(int subscriberId) =>
       (select(subscriberPlates)
-            ..where((p) => p.subscriberId.equals(subscriberId)))
+            ..where((sp) => sp.subscriberId.equals(subscriberId)))
           .watch();
 
   Future<int> insertSubscriberPlate(SubscriberPlatesCompanion entry) =>
       into(subscriberPlates).insert(entry);
 
   Future<int> deleteSubscriberPlate(int plateId) =>
-      (delete(subscriberPlates)
-            ..where((p) => p.id.equals(plateId)))
-          .go();
+      (delete(subscriberPlates)..where((sp) => sp.id.equals(plateId))).go();
 
-  /// Returns the active subscriber for a given plate, or null.
   Future<Subscriber?> findActiveSubscriberByPlate(String plate) async {
     final now = DateTime.now();
-    final matchingPlates = await (select(subscriberPlates)
-          ..where((p) => p.plate.equals(plate.toUpperCase())))
+    final matching = await (select(subscriberPlates)
+          ..where((sp) => sp.plate.equals(plate.toUpperCase())))
         .get();
 
-    for (final sp in matchingPlates) {
+    for (final sp in matching) {
       final sub = await (select(subscribers)
             ..where((s) =>
                 s.id.equals(sp.subscriberId) &
