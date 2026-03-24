@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/entry/entry_screen.dart';
 import '../features/exit/exit_screen.dart';
+import '../features/exit/exit_models.dart';
+import '../features/exit/payment_screen.dart';
 import '../features/active_cars/active_cars_screen.dart';
 import '../features/tariff/tariff_screen.dart';
 import '../features/subscriber/subscriber_screen.dart';
@@ -25,9 +27,16 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/exit',
       name: 'exit',
-      // extra: String? — pre-fills the plate from active-cars tap
+      // extra: String? — plate pre-filled when tapping from active-cars list
       builder: (context, state) =>
           ExitScreen(prefilledPlate: state.extra as String?),
+    ),
+    GoRoute(
+      path: '/payment',
+      name: 'payment',
+      // extra: PaymentData — carries record + tariff + cost result
+      builder: (context, state) =>
+          PaymentScreen(data: state.extra as PaymentData),
     ),
     GoRoute(
       path: '/active-cars',
