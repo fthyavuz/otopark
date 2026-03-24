@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter create:*)",
+      "Bash(cp -r C:/Develop/otopark_tmp/. C:/Develop/otopark/)",
+      "Bash(rm -rf C:/Develop/otopark_tmp)",
+      "Bash(flutter pub:*)",
+      "Bash(dart run:*)",
+      "Bash(flutter analyze:*)"
+    ]
+  }
+}
