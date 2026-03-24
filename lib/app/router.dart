@@ -10,38 +10,53 @@ import '../features/active_cars/active_cars_screen.dart';
 import '../features/tariff/tariff_screen.dart';
 import '../features/subscriber/subscriber_screen.dart';
 import '../features/reports/reports_screen.dart';
+import '../shared/widgets/app_nav_bar.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
   routes: [
-    GoRoute(
-      path: '/',
-      name: 'dashboard',
-      builder: (context, state) => const DashboardScreen(),
+    // ── Shell: screens that show the bottom nav bar ──────────────────────
+    ShellRoute(
+      builder: (context, state, child) =>
+          AppNavBar(location: state.uri.toString(), child: child),
+      routes: [
+        GoRoute(
+          path: '/',
+          name: 'dashboard',
+          builder: (context, state) => const DashboardScreen(),
+        ),
+        GoRoute(
+          path: '/active-cars',
+          name: 'active_cars',
+          builder: (context, state) => const ActiveCarsScreen(),
+        ),
+        GoRoute(
+          path: '/entry',
+          name: 'entry',
+          builder: (context, state) => const EntryScreen(),
+        ),
+        GoRoute(
+          path: '/exit',
+          name: 'exit',
+          // extra: String? — plate pre-filled when tapping from active-cars list
+          builder: (context, state) =>
+              ExitScreen(prefilledPlate: state.extra as String?),
+        ),
+        GoRoute(
+          path: '/reports',
+          name: 'reports',
+          builder: (context, state) => const ReportsScreen(),
+        ),
+      ],
     ),
-    GoRoute(
-      path: '/entry',
-      name: 'entry',
-      builder: (context, state) => const EntryScreen(),
-    ),
-    GoRoute(
-      path: '/exit',
-      name: 'exit',
-      // extra: String? — plate pre-filled when tapping from active-cars list
-      builder: (context, state) =>
-          ExitScreen(prefilledPlate: state.extra as String?),
-    ),
+
+    // ── Top-level: no bottom nav bar ─────────────────────────────────────
     GoRoute(
       path: '/payment',
       name: 'payment',
       // extra: PaymentData — carries record + tariff + cost result
       builder: (context, state) =>
           PaymentScreen(data: state.extra as PaymentData),
-    ),
-    GoRoute(
-      path: '/active-cars',
-      name: 'active_cars',
-      builder: (context, state) => const ActiveCarsScreen(),
     ),
     GoRoute(
       path: '/tariff',
@@ -52,11 +67,6 @@ final appRouter = GoRouter(
       path: '/subscribers',
       name: 'subscribers',
       builder: (context, state) => const SubscriberScreen(),
-    ),
-    GoRoute(
-      path: '/reports',
-      name: 'reports',
-      builder: (context, state) => const ReportsScreen(),
     ),
   ],
   errorBuilder: (context, state) => Scaffold(

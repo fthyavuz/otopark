@@ -2,9 +2,11 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../database/database.dart';
 import '../../shared/providers/database_provider.dart';
+import '../../shared/utils/plate_input_formatter.dart';
 import '../../shared/utils/plate_validator.dart';
 import '../tariff/tariff_providers.dart';
 
@@ -22,6 +24,7 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
   bool _saving = false;
   Subscriber? _detectedSubscriber;
   bool _subscriberChecked = false;
+  List<String> _suggestions = [];
 
   @override
   void dispose() {
@@ -30,25 +33,43 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
     super.dispose();
   }
 
-  // ─── Subscriber auto-detect ───────────────────────────────────────────────
+  // ─── Plate change ─────────────────────────────────────────────────────────
 
-  Future<void> _checkSubscriber(String plate) async {
-    if (plate.length < 4) {
+  Future<void> _onPlateChanged(String raw) async {
+    setState(() {});
+    final plate = PlateValidator.normalise(raw);
+    if (plate.length < 2) {
       setState(() {
         _detectedSubscriber = null;
         _subscriberChecked = false;
+        _suggestions = [];
       });
       return;
     }
+
     final db = ref.read(databaseProvider);
-    final sub = await db.findActiveSubscriberByPlate(
-        PlateValidator.normalise(plate));
-    if (mounted) {
-      setState(() {
-        _detectedSubscriber = sub;
-        _subscriberChecked = true;
-      });
-    }
+
+    // Load suggestions and subscriber check in parallel.
+    final futures = await Future.wait([
+      db.searchDistinctPlates(plate),
+      db.findActiveSubscriberByPlate(plate),
+    ]);
+
+    if (!mounted) return;
+    setState(() {
+      _suggestions = (futures[0] as List<String>)
+          .where((s) => s != PlateValidator.normalise(_plateCtrl.text))
+          .toList();
+      _detectedSubscriber = futures[1] as Subscriber?;
+      _subscriberChecked = plate.length >= 4;
+    });
+  }
+
+  void _applySuggestion(String plate) {
+    _plateCtrl.text = plate;
+    setState(() => _suggestions = []);
+    _focusNode.requestFocus();
+    _onPlateChanged(plate);
   }
 
   // ─── Submit ───────────────────────────────────────────────────────────────
@@ -62,13 +83,11 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
 
     final plate = PlateValidator.normalise(rawPlate);
 
-    // 1. Turkish plate format check
     if (!PlateValidator.isTurkishPlate(plate)) {
       final proceed = await _showForeignPlateDialog(plate);
       if (!proceed) return;
     }
 
-    // 2. Duplicate check
     final db = ref.read(databaseProvider);
     final existing = await db.getRecordByPlate(plate);
     if (existing != null) {
@@ -76,7 +95,6 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
       return;
     }
 
-    // 3. Get active tariff
     final tariff = await db.getActiveTariff();
 
     setState(() => _saving = true);
@@ -93,13 +111,11 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                Text('$plate girişi kaydedildi.'),
-              ],
-            ),
+            content: Row(children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 8),
+              Text('$plate girişi kaydedildi.'),
+            ]),
             backgroundColor: Colors.green,
           ),
         );
@@ -107,6 +123,7 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
         setState(() {
           _detectedSubscriber = null;
           _subscriberChecked = false;
+          _suggestions = [];
         });
         _focusNode.requestFocus();
       }
@@ -121,7 +138,8 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
     return await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            icon: const Icon(Icons.warning_amber, color: Colors.orange, size: 40),
+            icon: const Icon(Icons.warning_amber,
+                color: Colors.orange, size: 40),
             title: const Text('Türk Plakası Değil'),
             content: Text(
               '"$plate" Türk plaka formatına uymuyor.\n\nYabancı araç olabilir. Yine de giriş kaydı oluşturulsun mu?',
@@ -158,7 +176,8 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
       appBar: AppBar(title: const Text('Araç Girişi')),
       body: Center(
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: isTablet ? 500 : double.infinity),
+          constraints:
+              BoxConstraints(maxWidth: isTablet ? 500 : double.infinity),
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -183,10 +202,11 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
                                   color: Colors.orange),
                               const SizedBox(width: 8),
                               const Expanded(
-                                  child: Text(
-                                      'Aktif tarife yok. Ücret hesaplanamaz.')),
+                                child: Text(
+                                    'Aktif tarife yok. Ücret hesaplanamaz.'),
+                              ),
                               TextButton(
-                                onPressed: () => context.go('/tariff'),
+                                onPressed: () => context.push('/tariff'),
                                 child: const Text('Tarife Ekle'),
                               ),
                             ],
@@ -204,6 +224,7 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
                   focusNode: _focusNode,
                   autofocus: true,
                   textCapitalization: TextCapitalization.characters,
+                  inputFormatters: const [PlateInputFormatter()],
                   style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -225,17 +246,37 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
                               setState(() {
                                 _detectedSubscriber = null;
                                 _subscriberChecked = false;
+                                _suggestions = [];
                               });
                             },
                           )
                         : null,
                   ),
-                  onChanged: (v) {
-                    setState(() {});
-                    _checkSubscriber(v);
-                  },
+                  onChanged: _onPlateChanged,
                   onSubmitted: (_) => _submit(),
                 ),
+
+                // ── Plate suggestions ──────────────────────────
+                if (_suggestions.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: _suggestions
+                        .map((s) => ActionChip(
+                              avatar: const Icon(Icons.history, size: 16),
+                              label: Text(
+                                s,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                              onPressed: () => _applySuggestion(s),
+                            ))
+                        .toList(),
+                  ),
+                ],
 
                 const SizedBox(height: 20),
 
@@ -253,7 +294,8 @@ class _EntryScreenState extends ConsumerState<EntryScreen> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.info_outline, color: Colors.blue.shade700),
+                          Icon(Icons.info_outline,
+                              color: Colors.blue.shade700),
                           const SizedBox(width: 8),
                           const Text('Abonman kaydı bulunamadı.'),
                         ],
@@ -298,9 +340,9 @@ class _SubscriberBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final endDate = subscriber.endDate;
-    final daysLeft = endDate.difference(DateTime.now()).inDays;
-    final endStr =
-        '${endDate.day.toString().padLeft(2, '0')}.${endDate.month.toString().padLeft(2, '0')}.${endDate.year}';
+    final daysLeft =
+        endDate.difference(DateTime.now()).inDays.clamp(0, 9999);
+    final endStr = DateFormat('dd.MM.yyyy').format(endDate);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -311,7 +353,8 @@ class _SubscriberBadge extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.card_membership, color: Colors.green.shade700, size: 32),
+          Icon(Icons.card_membership,
+              color: Colors.green.shade700, size: 32),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -324,7 +367,8 @@ class _SubscriberBadge extends StatelessWidget {
                         fontSize: 16)),
                 Text('Bitiş: $endStr ($daysLeft gün kaldı)',
                     style: TextStyle(color: Colors.green.shade700)),
-                if (subscriber.notes != null && subscriber.notes!.isNotEmpty)
+                if (subscriber.notes != null &&
+                    subscriber.notes!.isNotEmpty)
                   Text(subscriber.notes!,
                       style: const TextStyle(color: Colors.grey)),
               ],

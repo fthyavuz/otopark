@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../shared/providers/database_provider.dart';
+import '../../shared/providers/settings_provider.dart';
 import '../../shared/utils/currency_formatter.dart';
 import '../../shared/utils/duration_formatter.dart';
 import 'exit_models.dart';
@@ -84,6 +85,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   @override
   Widget build(BuildContext context) {
     final d = widget.data;
+    final lotName = ref.watch(lotNameProvider);
     final isSubscriber = d.costResult.isSubscriber;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
@@ -115,11 +117,26 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                     tooltip: 'Geri',
                   ),
                   Expanded(
-                    child: Text(
-                      d.tariff.name,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          color: Colors.white60, fontSize: labelFontSize),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (lotName.isNotEmpty)
+                          Text(
+                            lotName,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: labelFontSize,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        Text(
+                          d.tariff.name,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: Colors.white60,
+                              fontSize: labelFontSize * 0.85),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 48), // balance the back button

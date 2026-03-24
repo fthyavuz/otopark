@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../shared/utils/plate_input_formatter.dart';
 import '../../shared/utils/plate_validator.dart';
 import 'active_cars_providers.dart';
 import 'widgets/car_tile.dart';
@@ -27,6 +28,8 @@ class _ActiveCarsScreenState extends ConsumerState<ActiveCarsScreen> {
   Widget build(BuildContext context) {
     final carsAsync = ref.watch(insideCarsProvider);
 
+    final isTablet = MediaQuery.of(context).size.width >= 600;
+
     return Scaffold(
       appBar: AppBar(
         title: carsAsync.when(
@@ -42,7 +45,10 @@ class _ActiveCarsScreenState extends ConsumerState<ActiveCarsScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: isTablet ? 720 : double.infinity),
+          child: Column(
         children: [
           // ── Search bar ──────────────────────────────────────
           Padding(
@@ -50,7 +56,7 @@ class _ActiveCarsScreenState extends ConsumerState<ActiveCarsScreen> {
             child: TextField(
               controller: _searchCtrl,
               decoration: InputDecoration(
-                hintText: 'Plaka ara...',
+                hintText: 'Plaka ara... (herhangi bir kısmını yazın)',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
@@ -64,6 +70,7 @@ class _ActiveCarsScreenState extends ConsumerState<ActiveCarsScreen> {
                 isDense: true,
               ),
               textCapitalization: TextCapitalization.characters,
+              inputFormatters: const [PlateInputFormatter()],
               onChanged: (v) =>
                   setState(() => _searchQuery = PlateValidator.normalise(v)),
             ),
@@ -76,10 +83,12 @@ class _ActiveCarsScreenState extends ConsumerState<ActiveCarsScreen> {
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Hata: $e')),
               data: (cars) {
-                final filtered = _searchQuery.isEmpty
+                final q = _searchQuery.replaceAll(' ', '');
+                final filtered = q.isEmpty
                     ? cars
                     : cars
-                        .where((c) => c.plate.contains(_searchQuery))
+                        .where((c) =>
+                            c.plate.replaceAll(' ', '').contains(q))
                         .toList();
 
                 if (cars.isEmpty) {
@@ -105,6 +114,8 @@ class _ActiveCarsScreenState extends ConsumerState<ActiveCarsScreen> {
             ),
           ),
         ],
+          ),
+        ),
       ),
     );
   }

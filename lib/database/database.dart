@@ -143,6 +143,23 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
 
+  /// Returns up to [limit] distinct plate strings that contain [rawQuery]
+  /// (spaces stripped from both sides for comparison).
+  Future<List<String>> searchDistinctPlates(String rawQuery,
+      {int limit = 6}) async {
+    final q = rawQuery.replaceAll(' ', '');
+    if (q.isEmpty) return [];
+    final rows = await (selectOnly(parkingRecords)
+          ..addColumns([parkingRecords.plate])
+          ..groupBy([parkingRecords.plate]))
+        .get();
+    return rows
+        .map((r) => r.read(parkingRecords.plate)!)
+        .where((p) => p.replaceAll(' ', '').contains(q))
+        .take(limit)
+        .toList();
+  }
+
   Future<List<ParkingRecord>> getRecordsByDateRange(
           DateTime from, DateTime to) =>
       (select(parkingRecords)
@@ -151,6 +168,17 @@ class AppDatabase extends _$AppDatabase {
                 r.exitTime.isSmallerOrEqualValue(to) &
                 r.status.equals('exited')))
           .get();
+
+  /// Reactive stream version — emits whenever completed records change.
+  Stream<List<ParkingRecord>> watchRecordsByDateRange(
+          DateTime from, DateTime to) =>
+      (select(parkingRecords)
+            ..where((r) =>
+                r.exitTime.isBiggerOrEqualValue(from) &
+                r.exitTime.isSmallerOrEqualValue(to) &
+                r.status.equals('exited'))
+            ..orderBy([(r) => OrderingTerm.desc(r.exitTime)]))
+          .watch();
 
   // ─── Subscriber queries ───────────────────────────────────────────────────
 

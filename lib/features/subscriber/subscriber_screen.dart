@@ -23,6 +23,8 @@ class _SubscriberScreenState extends ConsumerState<SubscriberScreen> {
     final subscribersAsync = ref.watch(allSubscribersProvider);
     final platesAsync = ref.watch(allSubscriberPlatesProvider);
 
+    final isTablet = MediaQuery.of(context).size.width >= 600;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Abonmanlar')),
       floatingActionButton: FloatingActionButton.extended(
@@ -30,7 +32,10 @@ class _SubscriberScreenState extends ConsumerState<SubscriberScreen> {
         icon: const Icon(Icons.person_add),
         label: const Text('Yeni Abonman'),
       ),
-      body: Column(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: isTablet ? 720 : double.infinity),
+          child: Column(
         children: [
           // ── Filter chips ──────────────────────────────────────
           Padding(
@@ -116,6 +121,8 @@ class _SubscriberScreenState extends ConsumerState<SubscriberScreen> {
             ),
           ),
         ],
+          ),
+        ),
       ),
     );
   }

@@ -8,6 +8,7 @@ import '../../shared/providers/database_provider.dart';
 import '../../shared/utils/cost_calculator.dart';
 import '../../shared/utils/currency_formatter.dart';
 import '../../shared/utils/duration_formatter.dart';
+import '../../shared/utils/plate_input_formatter.dart';
 import '../../shared/utils/plate_validator.dart';
 import '../active_cars/active_cars_providers.dart';
 import 'exit_models.dart';
@@ -150,6 +151,7 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
                   controller: _plateCtrl,
                   autofocus: widget.prefilledPlate == null,
                   textCapitalization: TextCapitalization.characters,
+                  inputFormatters: const [PlateInputFormatter()],
                   style: const TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,

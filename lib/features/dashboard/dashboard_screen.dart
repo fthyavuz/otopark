@@ -3,37 +3,125 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../shared/providers/settings_provider.dart';
 import '../../shared/utils/currency_formatter.dart';
+import '../../shared/widgets/park_logo.dart';
 import 'dashboard_providers.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Show setup dialog on first launch (lot name not yet set).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.read(lotNameProvider).isEmpty) {
+        _showLotNameDialog(required: true);
+      }
+    });
+  }
+
+  Future<void> _showLotNameDialog({required bool required}) async {
+    final ctrl = TextEditingController(
+      text: ref.read(lotNameProvider),
+    );
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !required,
+      builder: (ctx) => AlertDialog(
+        icon: const ParkLogo(size: 48),
+        title: const Text('Otopark Adı'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              required
+                  ? 'Hoş geldiniz! Otoparkinizin adını girin.'
+                  : 'Yeni bir otopark adı girin.',
+              style: const TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Otopark adı',
+                hintText: 'Örn: Merkez Otopark',
+                prefixIcon: Icon(Icons.local_parking),
+              ),
+              onSubmitted: (_) => _saveName(ctrl, ctx),
+            ),
+          ],
+        ),
+        actions: [
+          if (!required)
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('İptal'),
+            ),
+          FilledButton(
+            onPressed: () => _saveName(ctrl, ctx),
+            child: const Text('Kaydet'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+  }
+
+  void _saveName(TextEditingController ctrl, BuildContext ctx) {
+    final name = ctrl.text.trim();
+    if (name.isEmpty) return;
+    Navigator.of(ctx).pop();
+    ref.read(lotNameProvider.notifier).setName(name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final countAsync = ref.watch(insideCarsCountProvider);
     final revenueAsync = ref.watch(todayRevenueProvider);
+    final lotName = ref.watch(lotNameProvider);
     final colorScheme = Theme.of(context).colorScheme;
     final today = DateFormat('dd MMMM yyyy', 'tr_TR').format(DateTime.now());
 
     return Scaffold(
       appBar: AppBar(
+        leading: Padding(
+          padding: const EdgeInsets.all(10),
+          child: const ParkLogo(size: 32),
+        ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('ParkMate',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(
+              lotName.isEmpty ? 'ParkMate' : lotName,
+              style: const TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             Text(today,
-                style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                style: const TextStyle(
+                    fontSize: 11, color: Colors.white70)),
           ],
         ),
         backgroundColor: colorScheme.primary,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Otopark Adını Değiştir',
+            onPressed: () => _showLotNameDialog(required: false),
+          ),
+          IconButton(
             icon: const Icon(Icons.price_change_outlined),
             tooltip: 'Tarife',
-            onPressed: () => context.go('/tariff'),
+            onPressed: () => context.push('/tariff'),
           ),
         ],
       ),
@@ -116,13 +204,13 @@ class DashboardScreen extends ConsumerWidget {
                     label: 'Abonmanlar',
                     icon: Icons.card_membership,
                     color: Colors.teal,
-                    onTap: () => context.go('/subscribers'),
+                    onTap: () => context.push('/subscribers'),
                   ),
                   _ActionCard(
                     label: 'Tarife',
                     icon: Icons.price_change_outlined,
                     color: Colors.brown,
-                    onTap: () => context.go('/tariff'),
+                    onTap: () => context.push('/tariff'),
                   ),
                 ],
               ),
