@@ -25,7 +25,9 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/exit',
       name: 'exit',
-      builder: (context, state) => const ExitScreen(),
+      // extra: String? — pre-fills the plate from active-cars tap
+      builder: (context, state) =>
+          ExitScreen(prefilledPlate: state.extra as String?),
     ),
     GoRoute(
       path: '/active-cars',

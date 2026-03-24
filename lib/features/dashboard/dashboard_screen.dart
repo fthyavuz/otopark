@@ -1,20 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
-class DashboardScreen extends StatelessWidget {
+import '../../shared/utils/currency_formatter.dart';
+import 'dashboard_providers.dart';
+
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final countAsync = ref.watch(insideCarsCountProvider);
+    final revenueAsync = ref.watch(todayRevenueProvider);
     final colorScheme = Theme.of(context).colorScheme;
+    final today = DateFormat('dd MMMM yyyy', 'tr_TR').format(DateTime.now());
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ParkMate'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('ParkMate',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(today,
+                style: const TextStyle(fontSize: 12, color: Colors.white70)),
+          ],
+        ),
+        backgroundColor: colorScheme.primary,
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'Ayarlar',
+            icon: const Icon(Icons.price_change_outlined),
+            tooltip: 'Tarife',
             onPressed: () => context.go('/tariff'),
           ),
         ],
@@ -24,13 +42,17 @@ class DashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Stats row ─────────────────────────────────────
+            // ── Stats row ──────────────────────────────────────
             Row(
               children: [
                 Expanded(
                   child: _StatCard(
                     label: 'İçerideki Araç',
-                    value: '—',
+                    value: countAsync.when(
+                      loading: () => '...',
+                      error: (_, __) => '?',
+                      data: (n) => '$n',
+                    ),
                     icon: Icons.local_parking,
                     color: colorScheme.primary,
                   ),
@@ -39,7 +61,11 @@ class DashboardScreen extends StatelessWidget {
                 Expanded(
                   child: _StatCard(
                     label: 'Bugünkü Gelir',
-                    value: '— ₺',
+                    value: revenueAsync.when(
+                      loading: () => '...',
+                      error: (_, __) => '?',
+                      data: (r) => CurrencyFormatter.format(r),
+                    ),
                     icon: Icons.payments_outlined,
                     color: colorScheme.secondary,
                   ),
@@ -47,16 +73,19 @@ class DashboardScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 24),
+
             // ── Quick actions ──────────────────────────────────
             Text('Hızlı İşlemler',
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
+
             Expanded(
               child: GridView.count(
-                crossAxisCount: 2,
+                crossAxisCount:
+                    MediaQuery.of(context).size.width >= 600 ? 3 : 2,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 1.4,
+                childAspectRatio: 1.3,
                 children: [
                   _ActionCard(
                     label: 'Araç Girişi',
@@ -74,6 +103,7 @@ class DashboardScreen extends StatelessWidget {
                     label: 'İçerideki Araçlar',
                     icon: Icons.format_list_bulleted,
                     color: Colors.blue,
+                    badge: countAsync.value,
                     onTap: () => context.go('/active-cars'),
                   ),
                   _ActionCard(
@@ -104,6 +134,8 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
+// ─── Stat card ────────────────────────────────────────────────────────────────
+
 class _StatCard extends StatelessWidget {
   const _StatCard({
     required this.label,
@@ -124,19 +156,24 @@ class _StatCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Icon(icon, color: color, size: 32),
+            Icon(icon, color: color, size: 36),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: Theme.of(context).textTheme.bodySmall),
-                Text(value,
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: Colors.grey)),
+                  Text(value,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold)),
+                ],
+              ),
             ),
           ],
         ),
@@ -145,18 +182,22 @@ class _StatCard extends StatelessWidget {
   }
 }
 
+// ─── Action card ──────────────────────────────────────────────────────────────
+
 class _ActionCard extends StatelessWidget {
   const _ActionCard({
     required this.label,
     required this.icon,
     required this.color,
     required this.onTap,
+    this.badge,
   });
 
   final String label;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
+  final int? badge;
 
   @override
   Widget build(BuildContext context) {
@@ -166,14 +207,38 @@ class _ActionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Stack(
             children: [
-              Icon(icon, color: color, size: 36),
-              const SizedBox(height: 8),
-              Text(label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, color: color, size: 36),
+                    const SizedBox(height: 8),
+                    Text(label,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 13)),
+                  ],
+                ),
+              ),
+              if (badge != null && badge! > 0)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text('$badge',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold)),
+                  ),
+                ),
             ],
           ),
         ),
