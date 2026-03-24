@@ -167,6 +167,41 @@ class AppDatabase extends _$AppDatabase {
   Future<int> deleteSubscriber(int id) =>
       (delete(subscribers)..where((s) => s.id.equals(id))).go();
 
+  /// Deletes a subscriber and all their plates atomically.
+  Future<void> deleteSubscriberWithPlates(int id) async {
+    await transaction(() async {
+      await (delete(subscriberPlates)
+            ..where((sp) => sp.subscriberId.equals(id)))
+          .go();
+      await (delete(subscribers)..where((s) => s.id.equals(id))).go();
+    });
+  }
+
+  /// Extends the subscription end date (renewal).
+  Future<void> renewSubscriber(int id, DateTime newEndDate) =>
+      (update(subscribers)..where((s) => s.id.equals(id))).write(
+        SubscribersCompanion(
+          endDate: Value(newEndDate),
+          isActive: const Value(true),
+        ),
+      );
+
+  /// Replaces all plates for a subscriber inside a transaction.
+  Future<void> replaceSubscriberPlates(
+      int subscriberId, List<String> plates) async {
+    await transaction(() async {
+      await (delete(subscriberPlates)
+            ..where((sp) => sp.subscriberId.equals(subscriberId)))
+          .go();
+      for (final plate in plates) {
+        await into(subscriberPlates).insert(SubscriberPlatesCompanion.insert(
+          subscriberId: subscriberId,
+          plate: plate.toUpperCase().trim(),
+        ));
+      }
+    });
+  }
+
   Future<List<SubscriberPlate>> getPlatesForSubscriber(int subscriberId) =>
       (select(subscriberPlates)
             ..where((sp) => sp.subscriberId.equals(subscriberId)))
