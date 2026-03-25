@@ -10,6 +10,10 @@ import '../features/active_cars/active_cars_screen.dart';
 import '../features/tariff/tariff_screen.dart';
 import '../features/subscriber/subscriber_screen.dart';
 import '../features/reports/reports_screen.dart';
+import '../features/admin/admin_screen.dart';
+import '../features/entry/subscription_payment_screen.dart';
+import '../features/registered_vehicles/registered_vehicles_screen.dart';
+import '../features/entry/entry_models.dart';
 import '../shared/widgets/app_nav_bar.dart';
 
 final appRouter = GoRouter(
@@ -67,6 +71,22 @@ final appRouter = GoRouter(
       path: '/subscribers',
       name: 'subscribers',
       builder: (context, state) => const SubscriberScreen(),
+    ),
+    GoRoute(
+      path: '/admin',
+      name: 'admin',
+      builder: (context, state) => const AdminScreen(),
+    ),
+    GoRoute(
+      path: '/registered-vehicles',
+      name: 'registered_vehicles',
+      builder: (context, state) => const RegisteredVehiclesScreen(),
+    ),
+    GoRoute(
+      path: '/subscription-payment',
+      name: 'subscription_payment',
+      builder: (context, state) =>
+          SubscriptionPaymentScreen(data: state.extra as SubscriptionPaymentData),
     ),
   ],
   errorBuilder: (context, state) => Scaffold(

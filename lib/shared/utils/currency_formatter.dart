@@ -3,11 +3,10 @@ import 'package:intl/intl.dart';
 class CurrencyFormatter {
   CurrencyFormatter._();
 
-  static final _fmt = NumberFormat.currency(
-    locale: 'tr_TR',
-    symbol: '₺',
-    decimalDigits: 0,
-  );
+  static final _numFmt = NumberFormat('#,##0', 'tr_TR');
 
-  static String format(double amount) => _fmt.format(amount);
+  /// Formats [amount] as Turkish Lira: "₺ 1.500"
+  static String format(double amount) {
+    return '₺ ${_numFmt.format(amount.round())}';
+  }
 }

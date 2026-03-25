@@ -25,7 +25,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   @override
   void initState() {
     super.initState();
-    // Keep screen on while showing payment.
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
@@ -50,7 +49,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         calculatedCost: d.costResult.cost,
         tariffNameSnapshot: d.tariff.name,
         isSubscriber: d.costResult.isSubscriber,
+        isLargeVehicle: d.costResult.isLargeVehicle,
+        isDailySubscriber: d.costResult.isDailySubscriber,
       );
+
+      // If vehicle is large, persist it to the known large-vehicle list.
+      if (d.costResult.isLargeVehicle) {
+        await db.addKnownLargeVehicle(d.record.plate);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -65,6 +71,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             backgroundColor: Colors.green,
           ),
         );
+        // go('/') replaces the full stack — back to dashboard after confirmation.
         context.go('/');
       }
     } catch (e) {
@@ -86,11 +93,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   Widget build(BuildContext context) {
     final d = widget.data;
     final lotName = ref.watch(lotNameProvider);
-    final isSubscriber = d.costResult.isSubscriber;
+    final cost = d.costResult;
+    final isFree = cost.isSubscriber || (cost.isDailySubscriber && cost.cost == 0);
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
 
-    // Adaptive font sizes
     final plateFontSize = isTablet ? 64.0 : 44.0;
     final costFontSize = isTablet ? 96.0 : 72.0;
     final labelFontSize = isTablet ? 20.0 : 16.0;
@@ -101,18 +108,31 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     final entryDateStr = DateFormat('dd.MM.yyyy').format(d.record.entryTime);
     final isToday = _isToday(d.record.entryTime);
 
+    // Colour theme based on vehicle/subscriber type
+    final Color boxColor;
+    if (cost.isSubscriber) {
+      boxColor = Colors.green.shade800;
+    } else if (cost.isDailySubscriber) {
+      boxColor = Colors.teal.shade700;
+    } else if (cost.isLargeVehicle) {
+      boxColor = Colors.orange.shade800;
+    } else {
+      boxColor = const Color(0xFF1565C0);
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF0D1B2A),
       body: SafeArea(
         child: Column(
           children: [
-            // ── Top bar: back + tariff name ───────────────────
+            // ── Top bar ────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: Row(
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.white60),
+                    // context.pop() goes back to exit screen WITHOUT exiting the car.
                     onPressed: () => context.pop(),
                     tooltip: 'Geri',
                   ),
@@ -139,7 +159,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 48), // balance the back button
+                  const SizedBox(width: 48),
                 ],
               ),
             ),
@@ -152,7 +172,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // ── Plate number ────────────────────────────
+                    // ── Plate ───────────────────────────────────
                     Text(
                       d.record.plate,
                       textAlign: TextAlign.center,
@@ -164,28 +184,17 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                       ),
                     ),
 
-                    if (isSubscriber) ...[
-                      const SizedBox(height: 8),
-                      Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade700,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            'ABONMAN MÜŞTERİSİ',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: labelFontSize,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    // ── Type badges ─────────────────────────────
+                    const SizedBox(height: 8),
+                    if (cost.isSubscriber)
+                      _typeBadge('AYLIK ABONMAN',
+                          Colors.green.shade700, labelFontSize),
+                    if (cost.isDailySubscriber)
+                      _typeBadge('GÜNLÜK ABONE',
+                          Colors.teal.shade700, labelFontSize),
+                    if (cost.isLargeVehicle)
+                      _typeBadge('BÜYÜK ARAÇ',
+                          Colors.orange.shade700, labelFontSize),
 
                     const SizedBox(height: 32),
 
@@ -196,16 +205,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                         horizontal: 24,
                       ),
                       decoration: BoxDecoration(
-                        color: isSubscriber
-                            ? Colors.green.shade800
-                            : const Color(0xFF1565C0),
+                        color: boxColor,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: (isSubscriber
-                                    ? Colors.green
-                                    : const Color(0xFF1565C0))
-                                .withValues(alpha: 0.4),
+                            color: boxColor.withValues(alpha: 0.4),
                             blurRadius: 24,
                             spreadRadius: 4,
                           ),
@@ -214,7 +218,9 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                       child: Column(
                         children: [
                           Text(
-                            isSubscriber ? 'ÜCRETSİZ' : CurrencyFormatter.format(d.costResult.cost),
+                            isFree
+                                ? 'ÜCRETSİZ'
+                                : CurrencyFormatter.format(cost.cost),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: costFontSize,
@@ -222,10 +228,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                               color: Colors.white,
                             ),
                           ),
-                          if (!isSubscriber) ...[
+                          if (!isFree) ...[
                             const SizedBox(height: 4),
                             Text(
-                              d.costResult.description,
+                              cost.description,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: labelFontSize,
@@ -242,8 +248,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                     // ── Detail rows ─────────────────────────────
                     _PaymentDetailRow(
                       label: 'Giriş',
-                      value:
-                          isToday ? entryStr : '$entryDateStr $entryStr',
+                      value: isToday ? entryStr : '$entryDateStr $entryStr',
                       fontSize: detailFontSize,
                     ),
                     const SizedBox(height: 6),
@@ -256,7 +261,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                     _PaymentDetailRow(
                       label: 'Süre',
                       value: DurationFormatter.format(
-                          Duration(minutes: d.costResult.elapsedMinutes)),
+                          Duration(minutes: cost.elapsedMinutes)),
                       fontSize: detailFontSize,
                     ),
                   ],
@@ -306,6 +311,34 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     );
   }
 
+  Widget _typeBadge(String label, Color color, double fontSize) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: fontSize,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   static bool _isToday(DateTime dt) {
     final now = DateTime.now();
     return dt.year == now.year && dt.month == now.month && dt.day == now.day;
@@ -331,8 +364,7 @@ class _PaymentDetailRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label,
-            style: TextStyle(
-                fontSize: fontSize, color: Colors.white60)),
+            style: TextStyle(fontSize: fontSize, color: Colors.white60)),
         Text(value,
             style: TextStyle(
                 fontSize: fontSize,

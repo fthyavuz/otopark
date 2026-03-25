@@ -38,8 +38,8 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
     _plateCtrl = TextEditingController(text: widget.prefilledPlate ?? '');
     if (widget.prefilledPlate != null) {
       _searchQuery = PlateValidator.normalise(widget.prefilledPlate!);
-      // Trigger lookup after first frame when providers are ready.
-      WidgetsBinding.instance.addPostFrameCallback((_) => _lookup(_searchQuery));
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _lookup(_searchQuery));
     }
   }
 
@@ -79,7 +79,7 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
       return;
     }
 
-    // Load the tariff that was active at entry time.
+    // Load tariff
     Tariff? tariff;
     if (record.tariffId != null) {
       tariff = await db.getTariffById(record.tariffId!);
@@ -96,12 +96,35 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
     }
 
     final exitNow = DateTime.now();
-    final subscriber = await db.findActiveSubscriberByPlate(record.plate);
+
+    // Determine subscriber status
+    final monthlySub = await db.findActiveSubscriberByPlate(record.plate);
+    final dailySub = await db.findActiveDailySubscriberByPlate(record.plate);
+
+    final isMonthlySubscriber =
+        monthlySub != null || (record.isSubscriber && !record.isDailySubscriber);
+    final isDailySubscriber = record.isDailySubscriber || dailySub != null;
+    final dailyFee = tariff.dailySubscriptionPrice;
+
+    bool alreadyPaidToday = false;
+    if (isDailySubscriber) {
+      alreadyPaidToday =
+          await db.hasPlateAlreadyPaidDailyFeeToday(record.plate);
+    }
+
+    // Determine large vehicle status
+    final isLargeVehicle =
+        record.isLargeVehicle || await db.isKnownLargeVehicle(record.plate);
+
     final cost = CostCalculator.calculate(
       entryTime: record.entryTime,
       exitTime: exitNow,
       tariff: tariff,
-      isSubscriber: subscriber != null || record.isSubscriber,
+      isMonthlySubscriber: isMonthlySubscriber,
+      isDailySubscriber: isDailySubscriber,
+      dailyFee: dailyFee,
+      alreadyPaidDailyFeeToday: alreadyPaidToday,
+      isLargeVehicle: isLargeVehicle,
     );
 
     setState(() {
@@ -118,7 +141,8 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
     if (_foundRecord == null || _foundTariff == null || _costResult == null) {
       return;
     }
-    context.go(
+    // Use push (not go) so the back button returns here without performing exit.
+    context.push(
       '/payment',
       extra: PaymentData(
         record: _foundRecord!,
@@ -221,36 +245,26 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
                               itemCount: cars.length,
                               itemBuilder: (_, i) {
                                 final c = cars[i];
-                                final elapsed = DateTime.now()
-                                    .difference(c.entryTime);
+                                final elapsed =
+                                    DateTime.now().difference(c.entryTime);
                                 return Card(
                                   child: ListTile(
-                                    leading: const Icon(Icons.directions_car),
+                                    leading: Icon(
+                                      c.isLargeVehicle
+                                          ? Icons.local_shipping
+                                          : Icons.directions_car,
+                                      color: c.isLargeVehicle
+                                          ? Colors.orange
+                                          : null,
+                                    ),
                                     title: Text(c.plate,
                                         style: const TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 18,
                                             letterSpacing: 2)),
-                                    subtitle: Text(
-                                        DurationFormatter.format(elapsed)),
-                                    trailing: c.isSubscriber
-                                        ? Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: Colors.green.shade100,
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                            ),
-                                            child: Text('ABONMAN',
-                                                style: TextStyle(
-                                                    fontSize: 10,
-                                                    color: Colors.green
-                                                        .shade800,
-                                                    fontWeight:
-                                                        FontWeight.bold)),
-                                          )
-                                        : null,
+                                    subtitle:
+                                        Text(DurationFormatter.format(elapsed)),
+                                    trailing: _buildCarBadge(c),
                                     onTap: () {
                                       _plateCtrl.text = c.plate;
                                       final q =
@@ -275,7 +289,9 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
                     child: Center(child: CircularProgressIndicator())),
 
               // ── Not found message ────────────────────────────
-              if (!_loadingCost && _notFoundMsg != null && _foundRecord == null)
+              if (!_loadingCost &&
+                  _notFoundMsg != null &&
+                  _foundRecord == null)
                 Expanded(
                   child: Center(
                     child: Padding(
@@ -317,6 +333,32 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
       ),
     );
   }
+
+  Widget? _buildCarBadge(ParkingRecord c) {
+    if (c.isSubscriber) {
+      return _badge('ABONMAN', Colors.green.shade100, Colors.green.shade800);
+    }
+    if (c.isDailySubscriber) {
+      return _badge(
+          'GÜNLÜK ABONE', Colors.teal.shade100, Colors.teal.shade800);
+    }
+    if (c.isLargeVehicle) {
+      return _badge(
+          'BÜYÜK ARAÇ', Colors.orange.shade100, Colors.orange.shade800);
+    }
+    return null;
+  }
+
+  Widget _badge(String label, Color bg, Color fg) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 10, color: fg, fontWeight: FontWeight.bold)),
+    );
+  }
 }
 
 // ─── Cost summary card ────────────────────────────────────────────────────────
@@ -345,14 +387,14 @@ class _CostSummaryCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ── Plate ──────────────────────────────────────────────
+        // ── Plate card ──────────────────────────────────────────
         Card(
           color: Theme.of(context).colorScheme.primaryContainer,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // Plate + subscriber badge
+                // Plate + badges
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -364,22 +406,13 @@ class _CostSummaryCard extends StatelessWidget {
                         letterSpacing: 4,
                       ),
                     ),
-                    if (costResult.isSubscriber) ...[
-                      const SizedBox(width: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text('ABONMAN',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12)),
-                      ),
-                    ],
+                    const SizedBox(width: 10),
+                    if (costResult.isSubscriber)
+                      _inlineBadge('ABONMAN', Colors.green),
+                    if (costResult.isDailySubscriber)
+                      _inlineBadge('GÜNLÜK ABONE', Colors.teal),
+                    if (costResult.isLargeVehicle)
+                      _inlineBadge('BÜYÜK ARAÇ', Colors.orange),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -403,7 +436,7 @@ class _CostSummaryCard extends StatelessWidget {
                   valueStyle: const TextStyle(color: Colors.grey),
                 ),
                 _DetailRow(
-                  label: costResult.isSubscriber ? 'Ücret' : 'Uygulandı',
+                  label: 'Uygulanan',
                   value: costResult.description,
                 ),
                 const SizedBox(height: 8),
@@ -411,17 +444,20 @@ class _CostSummaryCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('TOPLAM',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            )),
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.bold)),
                     Text(
-                      costResult.isSubscriber
+                      (costResult.isSubscriber ||
+                              (costResult.isDailySubscriber &&
+                                  costResult.cost == 0))
                           ? 'ÜCRETSİZ'
                           : CurrencyFormatter.format(costResult.cost),
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: costResult.isSubscriber
+                        color: costResult.cost == 0
                             ? Colors.green.shade700
                             : Theme.of(context).colorScheme.primary,
                       ),
@@ -448,6 +484,22 @@ class _CostSummaryCard extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _inlineBadge(String label, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(left: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(label,
+          style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 11)),
     );
   }
 

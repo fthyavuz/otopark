@@ -7,6 +7,13 @@ class Subscribers extends Table {
   DateTimeColumn get endDate => dateTime()();
   RealColumn get monthlyFee => real()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+
+  /// 'monthly' or 'daily'
+  TextColumn get subscriberType =>
+      text().withDefault(const Constant('monthly'))();
+
+  /// Fee charged per day for daily subscribers (null = use default 150).
+  RealColumn get dailyFee => real().nullable()();
 }
 
 class SubscriberPlates extends Table {

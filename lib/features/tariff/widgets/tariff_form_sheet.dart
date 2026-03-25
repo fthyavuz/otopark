@@ -68,6 +68,7 @@ class _TariffFormSheetState extends ConsumerState<TariffFormSheet> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _fullDayCtrl;
   late final TextEditingController _monthlyCtrl;
+  late final TextEditingController _dailySubCtrl;
   late List<_BracketRow> _brackets;
 
   bool _saving = false;
@@ -81,6 +82,8 @@ class _TariffFormSheetState extends ConsumerState<TariffFormSheet> {
         TextEditingController(text: t?.fullDayPrice.toStringAsFixed(0) ?? '');
     _monthlyCtrl =
         TextEditingController(text: t?.monthlyPrice.toStringAsFixed(0) ?? '');
+    _dailySubCtrl = TextEditingController(
+        text: t?.dailySubscriptionPrice.toStringAsFixed(0) ?? '150');
 
     if (t != null) {
       final list = jsonDecode(t.bracketsJson) as List;
@@ -105,6 +108,7 @@ class _TariffFormSheetState extends ConsumerState<TariffFormSheet> {
     _nameCtrl.dispose();
     _fullDayCtrl.dispose();
     _monthlyCtrl.dispose();
+    _dailySubCtrl.dispose();
     for (final b in _brackets) {
       b.dispose();
     }
@@ -147,6 +151,7 @@ class _TariffFormSheetState extends ConsumerState<TariffFormSheet> {
           bracketsJson: Value(bracketsJson),
           fullDayPrice: Value(double.parse(_fullDayCtrl.text.trim())),
           monthlyPrice: Value(double.parse(_monthlyCtrl.text.trim())),
+          dailySubscriptionPrice: Value(double.parse(_dailySubCtrl.text.trim())),
         ));
       } else {
         await db.switchToNewTariff(TariffsCompanion.insert(
@@ -154,6 +159,7 @@ class _TariffFormSheetState extends ConsumerState<TariffFormSheet> {
           bracketsJson: bracketsJson,
           fullDayPrice: double.parse(_fullDayCtrl.text.trim()),
           monthlyPrice: double.parse(_monthlyCtrl.text.trim()),
+          dailySubscriptionPrice: Value(double.parse(_dailySubCtrl.text.trim())),
           validFrom: now,
         ));
       }
@@ -341,6 +347,25 @@ class _TariffFormSheetState extends ConsumerState<TariffFormSheet> {
                         return null;
                       },
                     ),
+                    const SizedBox(height: 16),
+
+                    // Daily subscription price
+                    TextFormField(
+                      controller: _dailySubCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Günlük Abonman (₺)',
+                        hintText: 'Örn: 150',
+                        prefixText: '₺ ',
+                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Zorunlu alan';
+                        final n = double.tryParse(v);
+                        if (n == null || n <= 0) return 'Geçerli bir tutar girin';
+                        return null;
+                      },
+                    ),
                     const SizedBox(height: 32),
 
                     // Save button
@@ -471,6 +496,11 @@ class TariffBracketsDisplay extends StatelessWidget {
         _TariffRow(
           label: 'Aylık Abonman',
           value: CurrencyFormatter.format(tariff.monthlyPrice),
+          isHighlighted: true,
+        ),
+        _TariffRow(
+          label: 'Günlük Abonman',
+          value: CurrencyFormatter.format(tariff.dailySubscriptionPrice),
           isHighlighted: true,
         ),
       ],

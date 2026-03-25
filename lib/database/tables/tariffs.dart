@@ -13,6 +13,7 @@ class Tariffs extends Table {
 
   RealColumn get fullDayPrice => real()();
   RealColumn get monthlyPrice => real()();
+  RealColumn get dailySubscriptionPrice => real().withDefault(const Constant(150.0))();
 
   DateTimeColumn get validFrom => dateTime()();
   DateTimeColumn get validTo => dateTime().nullable()();

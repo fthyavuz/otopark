@@ -67,6 +67,18 @@ class $TariffsTable extends Tariffs with TableInfo<$TariffsTable, Tariff> {
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _dailySubscriptionPriceMeta =
+      const VerificationMeta('dailySubscriptionPrice');
+  @override
+  late final GeneratedColumn<double> dailySubscriptionPrice =
+      GeneratedColumn<double>(
+        'daily_subscription_price',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(150.0),
+      );
   static const VerificationMeta _validFromMeta = const VerificationMeta(
     'validFrom',
   );
@@ -111,6 +123,7 @@ class $TariffsTable extends Tariffs with TableInfo<$TariffsTable, Tariff> {
     bracketsJson,
     fullDayPrice,
     monthlyPrice,
+    dailySubscriptionPrice,
     validFrom,
     validTo,
     isActive,
@@ -171,6 +184,15 @@ class $TariffsTable extends Tariffs with TableInfo<$TariffsTable, Tariff> {
     } else if (isInserting) {
       context.missing(_monthlyPriceMeta);
     }
+    if (data.containsKey('daily_subscription_price')) {
+      context.handle(
+        _dailySubscriptionPriceMeta,
+        dailySubscriptionPrice.isAcceptableOrUnknown(
+          data['daily_subscription_price']!,
+          _dailySubscriptionPriceMeta,
+        ),
+      );
+    }
     if (data.containsKey('valid_from')) {
       context.handle(
         _validFromMeta,
@@ -220,6 +242,10 @@ class $TariffsTable extends Tariffs with TableInfo<$TariffsTable, Tariff> {
         DriftSqlType.double,
         data['${effectivePrefix}monthly_price'],
       )!,
+      dailySubscriptionPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}daily_subscription_price'],
+      )!,
       validFrom: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}valid_from'],
@@ -250,6 +276,7 @@ class Tariff extends DataClass implements Insertable<Tariff> {
   final String bracketsJson;
   final double fullDayPrice;
   final double monthlyPrice;
+  final double dailySubscriptionPrice;
   final DateTime validFrom;
   final DateTime? validTo;
   final bool isActive;
@@ -259,6 +286,7 @@ class Tariff extends DataClass implements Insertable<Tariff> {
     required this.bracketsJson,
     required this.fullDayPrice,
     required this.monthlyPrice,
+    required this.dailySubscriptionPrice,
     required this.validFrom,
     this.validTo,
     required this.isActive,
@@ -271,6 +299,7 @@ class Tariff extends DataClass implements Insertable<Tariff> {
     map['brackets_json'] = Variable<String>(bracketsJson);
     map['full_day_price'] = Variable<double>(fullDayPrice);
     map['monthly_price'] = Variable<double>(monthlyPrice);
+    map['daily_subscription_price'] = Variable<double>(dailySubscriptionPrice);
     map['valid_from'] = Variable<DateTime>(validFrom);
     if (!nullToAbsent || validTo != null) {
       map['valid_to'] = Variable<DateTime>(validTo);
@@ -286,6 +315,7 @@ class Tariff extends DataClass implements Insertable<Tariff> {
       bracketsJson: Value(bracketsJson),
       fullDayPrice: Value(fullDayPrice),
       monthlyPrice: Value(monthlyPrice),
+      dailySubscriptionPrice: Value(dailySubscriptionPrice),
       validFrom: Value(validFrom),
       validTo: validTo == null && nullToAbsent
           ? const Value.absent()
@@ -305,6 +335,9 @@ class Tariff extends DataClass implements Insertable<Tariff> {
       bracketsJson: serializer.fromJson<String>(json['bracketsJson']),
       fullDayPrice: serializer.fromJson<double>(json['fullDayPrice']),
       monthlyPrice: serializer.fromJson<double>(json['monthlyPrice']),
+      dailySubscriptionPrice: serializer.fromJson<double>(
+        json['dailySubscriptionPrice'],
+      ),
       validFrom: serializer.fromJson<DateTime>(json['validFrom']),
       validTo: serializer.fromJson<DateTime?>(json['validTo']),
       isActive: serializer.fromJson<bool>(json['isActive']),
@@ -319,6 +352,9 @@ class Tariff extends DataClass implements Insertable<Tariff> {
       'bracketsJson': serializer.toJson<String>(bracketsJson),
       'fullDayPrice': serializer.toJson<double>(fullDayPrice),
       'monthlyPrice': serializer.toJson<double>(monthlyPrice),
+      'dailySubscriptionPrice': serializer.toJson<double>(
+        dailySubscriptionPrice,
+      ),
       'validFrom': serializer.toJson<DateTime>(validFrom),
       'validTo': serializer.toJson<DateTime?>(validTo),
       'isActive': serializer.toJson<bool>(isActive),
@@ -331,6 +367,7 @@ class Tariff extends DataClass implements Insertable<Tariff> {
     String? bracketsJson,
     double? fullDayPrice,
     double? monthlyPrice,
+    double? dailySubscriptionPrice,
     DateTime? validFrom,
     Value<DateTime?> validTo = const Value.absent(),
     bool? isActive,
@@ -340,6 +377,8 @@ class Tariff extends DataClass implements Insertable<Tariff> {
     bracketsJson: bracketsJson ?? this.bracketsJson,
     fullDayPrice: fullDayPrice ?? this.fullDayPrice,
     monthlyPrice: monthlyPrice ?? this.monthlyPrice,
+    dailySubscriptionPrice:
+        dailySubscriptionPrice ?? this.dailySubscriptionPrice,
     validFrom: validFrom ?? this.validFrom,
     validTo: validTo.present ? validTo.value : this.validTo,
     isActive: isActive ?? this.isActive,
@@ -357,6 +396,9 @@ class Tariff extends DataClass implements Insertable<Tariff> {
       monthlyPrice: data.monthlyPrice.present
           ? data.monthlyPrice.value
           : this.monthlyPrice,
+      dailySubscriptionPrice: data.dailySubscriptionPrice.present
+          ? data.dailySubscriptionPrice.value
+          : this.dailySubscriptionPrice,
       validFrom: data.validFrom.present ? data.validFrom.value : this.validFrom,
       validTo: data.validTo.present ? data.validTo.value : this.validTo,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
@@ -371,6 +413,7 @@ class Tariff extends DataClass implements Insertable<Tariff> {
           ..write('bracketsJson: $bracketsJson, ')
           ..write('fullDayPrice: $fullDayPrice, ')
           ..write('monthlyPrice: $monthlyPrice, ')
+          ..write('dailySubscriptionPrice: $dailySubscriptionPrice, ')
           ..write('validFrom: $validFrom, ')
           ..write('validTo: $validTo, ')
           ..write('isActive: $isActive')
@@ -385,6 +428,7 @@ class Tariff extends DataClass implements Insertable<Tariff> {
     bracketsJson,
     fullDayPrice,
     monthlyPrice,
+    dailySubscriptionPrice,
     validFrom,
     validTo,
     isActive,
@@ -398,6 +442,7 @@ class Tariff extends DataClass implements Insertable<Tariff> {
           other.bracketsJson == this.bracketsJson &&
           other.fullDayPrice == this.fullDayPrice &&
           other.monthlyPrice == this.monthlyPrice &&
+          other.dailySubscriptionPrice == this.dailySubscriptionPrice &&
           other.validFrom == this.validFrom &&
           other.validTo == this.validTo &&
           other.isActive == this.isActive);
@@ -409,6 +454,7 @@ class TariffsCompanion extends UpdateCompanion<Tariff> {
   final Value<String> bracketsJson;
   final Value<double> fullDayPrice;
   final Value<double> monthlyPrice;
+  final Value<double> dailySubscriptionPrice;
   final Value<DateTime> validFrom;
   final Value<DateTime?> validTo;
   final Value<bool> isActive;
@@ -418,6 +464,7 @@ class TariffsCompanion extends UpdateCompanion<Tariff> {
     this.bracketsJson = const Value.absent(),
     this.fullDayPrice = const Value.absent(),
     this.monthlyPrice = const Value.absent(),
+    this.dailySubscriptionPrice = const Value.absent(),
     this.validFrom = const Value.absent(),
     this.validTo = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -428,6 +475,7 @@ class TariffsCompanion extends UpdateCompanion<Tariff> {
     required String bracketsJson,
     required double fullDayPrice,
     required double monthlyPrice,
+    this.dailySubscriptionPrice = const Value.absent(),
     required DateTime validFrom,
     this.validTo = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -442,6 +490,7 @@ class TariffsCompanion extends UpdateCompanion<Tariff> {
     Expression<String>? bracketsJson,
     Expression<double>? fullDayPrice,
     Expression<double>? monthlyPrice,
+    Expression<double>? dailySubscriptionPrice,
     Expression<DateTime>? validFrom,
     Expression<DateTime>? validTo,
     Expression<bool>? isActive,
@@ -452,6 +501,8 @@ class TariffsCompanion extends UpdateCompanion<Tariff> {
       if (bracketsJson != null) 'brackets_json': bracketsJson,
       if (fullDayPrice != null) 'full_day_price': fullDayPrice,
       if (monthlyPrice != null) 'monthly_price': monthlyPrice,
+      if (dailySubscriptionPrice != null)
+        'daily_subscription_price': dailySubscriptionPrice,
       if (validFrom != null) 'valid_from': validFrom,
       if (validTo != null) 'valid_to': validTo,
       if (isActive != null) 'is_active': isActive,
@@ -464,6 +515,7 @@ class TariffsCompanion extends UpdateCompanion<Tariff> {
     Value<String>? bracketsJson,
     Value<double>? fullDayPrice,
     Value<double>? monthlyPrice,
+    Value<double>? dailySubscriptionPrice,
     Value<DateTime>? validFrom,
     Value<DateTime?>? validTo,
     Value<bool>? isActive,
@@ -474,6 +526,8 @@ class TariffsCompanion extends UpdateCompanion<Tariff> {
       bracketsJson: bracketsJson ?? this.bracketsJson,
       fullDayPrice: fullDayPrice ?? this.fullDayPrice,
       monthlyPrice: monthlyPrice ?? this.monthlyPrice,
+      dailySubscriptionPrice:
+          dailySubscriptionPrice ?? this.dailySubscriptionPrice,
       validFrom: validFrom ?? this.validFrom,
       validTo: validTo ?? this.validTo,
       isActive: isActive ?? this.isActive,
@@ -498,6 +552,11 @@ class TariffsCompanion extends UpdateCompanion<Tariff> {
     if (monthlyPrice.present) {
       map['monthly_price'] = Variable<double>(monthlyPrice.value);
     }
+    if (dailySubscriptionPrice.present) {
+      map['daily_subscription_price'] = Variable<double>(
+        dailySubscriptionPrice.value,
+      );
+    }
     if (validFrom.present) {
       map['valid_from'] = Variable<DateTime>(validFrom.value);
     }
@@ -518,6 +577,7 @@ class TariffsCompanion extends UpdateCompanion<Tariff> {
           ..write('bracketsJson: $bracketsJson, ')
           ..write('fullDayPrice: $fullDayPrice, ')
           ..write('monthlyPrice: $monthlyPrice, ')
+          ..write('dailySubscriptionPrice: $dailySubscriptionPrice, ')
           ..write('validFrom: $validFrom, ')
           ..write('validTo: $validTo, ')
           ..write('isActive: $isActive')
@@ -631,6 +691,36 @@ class $ParkingRecordsTable extends ParkingRecords
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isLargeVehicleMeta = const VerificationMeta(
+    'isLargeVehicle',
+  );
+  @override
+  late final GeneratedColumn<bool> isLargeVehicle = GeneratedColumn<bool>(
+    'is_large_vehicle',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_large_vehicle" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isDailySubscriberMeta = const VerificationMeta(
+    'isDailySubscriber',
+  );
+  @override
+  late final GeneratedColumn<bool> isDailySubscriber = GeneratedColumn<bool>(
+    'is_daily_subscriber',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_daily_subscriber" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -660,6 +750,8 @@ class $ParkingRecordsTable extends ParkingRecords
     tariffNameSnapshot,
     calculatedCost,
     isSubscriber,
+    isLargeVehicle,
+    isDailySubscriber,
     status,
     notes,
   ];
@@ -733,6 +825,24 @@ class $ParkingRecordsTable extends ParkingRecords
         ),
       );
     }
+    if (data.containsKey('is_large_vehicle')) {
+      context.handle(
+        _isLargeVehicleMeta,
+        isLargeVehicle.isAcceptableOrUnknown(
+          data['is_large_vehicle']!,
+          _isLargeVehicleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_daily_subscriber')) {
+      context.handle(
+        _isDailySubscriberMeta,
+        isDailySubscriber.isAcceptableOrUnknown(
+          data['is_daily_subscriber']!,
+          _isDailySubscriberMeta,
+        ),
+      );
+    }
     if (data.containsKey('status')) {
       context.handle(
         _statusMeta,
@@ -786,6 +896,14 @@ class $ParkingRecordsTable extends ParkingRecords
         DriftSqlType.bool,
         data['${effectivePrefix}is_subscriber'],
       )!,
+      isLargeVehicle: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_large_vehicle'],
+      )!,
+      isDailySubscriber: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_daily_subscriber'],
+      )!,
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -815,7 +933,15 @@ class ParkingRecord extends DataClass implements Insertable<ParkingRecord> {
   /// Snapshot of the tariff name at time of exit — for historical records.
   final String? tariffNameSnapshot;
   final double? calculatedCost;
+
+  /// True if vehicle was a monthly subscriber at entry time.
   final bool isSubscriber;
+
+  /// True if vehicle was flagged as a large vehicle at entry.
+  final bool isLargeVehicle;
+
+  /// True if vehicle was flagged as a daily subscriber at entry.
+  final bool isDailySubscriber;
 
   /// 'inside' or 'exited'
   final String status;
@@ -829,6 +955,8 @@ class ParkingRecord extends DataClass implements Insertable<ParkingRecord> {
     this.tariffNameSnapshot,
     this.calculatedCost,
     required this.isSubscriber,
+    required this.isLargeVehicle,
+    required this.isDailySubscriber,
     required this.status,
     this.notes,
   });
@@ -851,6 +979,8 @@ class ParkingRecord extends DataClass implements Insertable<ParkingRecord> {
       map['calculated_cost'] = Variable<double>(calculatedCost);
     }
     map['is_subscriber'] = Variable<bool>(isSubscriber);
+    map['is_large_vehicle'] = Variable<bool>(isLargeVehicle);
+    map['is_daily_subscriber'] = Variable<bool>(isDailySubscriber);
     map['status'] = Variable<String>(status);
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
@@ -876,6 +1006,8 @@ class ParkingRecord extends DataClass implements Insertable<ParkingRecord> {
           ? const Value.absent()
           : Value(calculatedCost),
       isSubscriber: Value(isSubscriber),
+      isLargeVehicle: Value(isLargeVehicle),
+      isDailySubscriber: Value(isDailySubscriber),
       status: Value(status),
       notes: notes == null && nullToAbsent
           ? const Value.absent()
@@ -899,6 +1031,8 @@ class ParkingRecord extends DataClass implements Insertable<ParkingRecord> {
       ),
       calculatedCost: serializer.fromJson<double?>(json['calculatedCost']),
       isSubscriber: serializer.fromJson<bool>(json['isSubscriber']),
+      isLargeVehicle: serializer.fromJson<bool>(json['isLargeVehicle']),
+      isDailySubscriber: serializer.fromJson<bool>(json['isDailySubscriber']),
       status: serializer.fromJson<String>(json['status']),
       notes: serializer.fromJson<String?>(json['notes']),
     );
@@ -915,6 +1049,8 @@ class ParkingRecord extends DataClass implements Insertable<ParkingRecord> {
       'tariffNameSnapshot': serializer.toJson<String?>(tariffNameSnapshot),
       'calculatedCost': serializer.toJson<double?>(calculatedCost),
       'isSubscriber': serializer.toJson<bool>(isSubscriber),
+      'isLargeVehicle': serializer.toJson<bool>(isLargeVehicle),
+      'isDailySubscriber': serializer.toJson<bool>(isDailySubscriber),
       'status': serializer.toJson<String>(status),
       'notes': serializer.toJson<String?>(notes),
     };
@@ -929,6 +1065,8 @@ class ParkingRecord extends DataClass implements Insertable<ParkingRecord> {
     Value<String?> tariffNameSnapshot = const Value.absent(),
     Value<double?> calculatedCost = const Value.absent(),
     bool? isSubscriber,
+    bool? isLargeVehicle,
+    bool? isDailySubscriber,
     String? status,
     Value<String?> notes = const Value.absent(),
   }) => ParkingRecord(
@@ -944,6 +1082,8 @@ class ParkingRecord extends DataClass implements Insertable<ParkingRecord> {
         ? calculatedCost.value
         : this.calculatedCost,
     isSubscriber: isSubscriber ?? this.isSubscriber,
+    isLargeVehicle: isLargeVehicle ?? this.isLargeVehicle,
+    isDailySubscriber: isDailySubscriber ?? this.isDailySubscriber,
     status: status ?? this.status,
     notes: notes.present ? notes.value : this.notes,
   );
@@ -963,6 +1103,12 @@ class ParkingRecord extends DataClass implements Insertable<ParkingRecord> {
       isSubscriber: data.isSubscriber.present
           ? data.isSubscriber.value
           : this.isSubscriber,
+      isLargeVehicle: data.isLargeVehicle.present
+          ? data.isLargeVehicle.value
+          : this.isLargeVehicle,
+      isDailySubscriber: data.isDailySubscriber.present
+          ? data.isDailySubscriber.value
+          : this.isDailySubscriber,
       status: data.status.present ? data.status.value : this.status,
       notes: data.notes.present ? data.notes.value : this.notes,
     );
@@ -979,6 +1125,8 @@ class ParkingRecord extends DataClass implements Insertable<ParkingRecord> {
           ..write('tariffNameSnapshot: $tariffNameSnapshot, ')
           ..write('calculatedCost: $calculatedCost, ')
           ..write('isSubscriber: $isSubscriber, ')
+          ..write('isLargeVehicle: $isLargeVehicle, ')
+          ..write('isDailySubscriber: $isDailySubscriber, ')
           ..write('status: $status, ')
           ..write('notes: $notes')
           ..write(')'))
@@ -995,6 +1143,8 @@ class ParkingRecord extends DataClass implements Insertable<ParkingRecord> {
     tariffNameSnapshot,
     calculatedCost,
     isSubscriber,
+    isLargeVehicle,
+    isDailySubscriber,
     status,
     notes,
   );
@@ -1010,6 +1160,8 @@ class ParkingRecord extends DataClass implements Insertable<ParkingRecord> {
           other.tariffNameSnapshot == this.tariffNameSnapshot &&
           other.calculatedCost == this.calculatedCost &&
           other.isSubscriber == this.isSubscriber &&
+          other.isLargeVehicle == this.isLargeVehicle &&
+          other.isDailySubscriber == this.isDailySubscriber &&
           other.status == this.status &&
           other.notes == this.notes);
 }
@@ -1023,6 +1175,8 @@ class ParkingRecordsCompanion extends UpdateCompanion<ParkingRecord> {
   final Value<String?> tariffNameSnapshot;
   final Value<double?> calculatedCost;
   final Value<bool> isSubscriber;
+  final Value<bool> isLargeVehicle;
+  final Value<bool> isDailySubscriber;
   final Value<String> status;
   final Value<String?> notes;
   const ParkingRecordsCompanion({
@@ -1034,6 +1188,8 @@ class ParkingRecordsCompanion extends UpdateCompanion<ParkingRecord> {
     this.tariffNameSnapshot = const Value.absent(),
     this.calculatedCost = const Value.absent(),
     this.isSubscriber = const Value.absent(),
+    this.isLargeVehicle = const Value.absent(),
+    this.isDailySubscriber = const Value.absent(),
     this.status = const Value.absent(),
     this.notes = const Value.absent(),
   });
@@ -1046,6 +1202,8 @@ class ParkingRecordsCompanion extends UpdateCompanion<ParkingRecord> {
     this.tariffNameSnapshot = const Value.absent(),
     this.calculatedCost = const Value.absent(),
     this.isSubscriber = const Value.absent(),
+    this.isLargeVehicle = const Value.absent(),
+    this.isDailySubscriber = const Value.absent(),
     this.status = const Value.absent(),
     this.notes = const Value.absent(),
   }) : plate = Value(plate),
@@ -1059,6 +1217,8 @@ class ParkingRecordsCompanion extends UpdateCompanion<ParkingRecord> {
     Expression<String>? tariffNameSnapshot,
     Expression<double>? calculatedCost,
     Expression<bool>? isSubscriber,
+    Expression<bool>? isLargeVehicle,
+    Expression<bool>? isDailySubscriber,
     Expression<String>? status,
     Expression<String>? notes,
   }) {
@@ -1072,6 +1232,8 @@ class ParkingRecordsCompanion extends UpdateCompanion<ParkingRecord> {
         'tariff_name_snapshot': tariffNameSnapshot,
       if (calculatedCost != null) 'calculated_cost': calculatedCost,
       if (isSubscriber != null) 'is_subscriber': isSubscriber,
+      if (isLargeVehicle != null) 'is_large_vehicle': isLargeVehicle,
+      if (isDailySubscriber != null) 'is_daily_subscriber': isDailySubscriber,
       if (status != null) 'status': status,
       if (notes != null) 'notes': notes,
     });
@@ -1086,6 +1248,8 @@ class ParkingRecordsCompanion extends UpdateCompanion<ParkingRecord> {
     Value<String?>? tariffNameSnapshot,
     Value<double?>? calculatedCost,
     Value<bool>? isSubscriber,
+    Value<bool>? isLargeVehicle,
+    Value<bool>? isDailySubscriber,
     Value<String>? status,
     Value<String?>? notes,
   }) {
@@ -1098,6 +1262,8 @@ class ParkingRecordsCompanion extends UpdateCompanion<ParkingRecord> {
       tariffNameSnapshot: tariffNameSnapshot ?? this.tariffNameSnapshot,
       calculatedCost: calculatedCost ?? this.calculatedCost,
       isSubscriber: isSubscriber ?? this.isSubscriber,
+      isLargeVehicle: isLargeVehicle ?? this.isLargeVehicle,
+      isDailySubscriber: isDailySubscriber ?? this.isDailySubscriber,
       status: status ?? this.status,
       notes: notes ?? this.notes,
     );
@@ -1130,6 +1296,12 @@ class ParkingRecordsCompanion extends UpdateCompanion<ParkingRecord> {
     if (isSubscriber.present) {
       map['is_subscriber'] = Variable<bool>(isSubscriber.value);
     }
+    if (isLargeVehicle.present) {
+      map['is_large_vehicle'] = Variable<bool>(isLargeVehicle.value);
+    }
+    if (isDailySubscriber.present) {
+      map['is_daily_subscriber'] = Variable<bool>(isDailySubscriber.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
@@ -1150,6 +1322,8 @@ class ParkingRecordsCompanion extends UpdateCompanion<ParkingRecord> {
           ..write('tariffNameSnapshot: $tariffNameSnapshot, ')
           ..write('calculatedCost: $calculatedCost, ')
           ..write('isSubscriber: $isSubscriber, ')
+          ..write('isLargeVehicle: $isLargeVehicle, ')
+          ..write('isDailySubscriber: $isDailySubscriber, ')
           ..write('status: $status, ')
           ..write('notes: $notes')
           ..write(')'))
@@ -1233,6 +1407,29 @@ class $SubscribersTable extends Subscribers
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _subscriberTypeMeta = const VerificationMeta(
+    'subscriberType',
+  );
+  @override
+  late final GeneratedColumn<String> subscriberType = GeneratedColumn<String>(
+    'subscriber_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('monthly'),
+  );
+  static const VerificationMeta _dailyFeeMeta = const VerificationMeta(
+    'dailyFee',
+  );
+  @override
+  late final GeneratedColumn<double> dailyFee = GeneratedColumn<double>(
+    'daily_fee',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1241,6 +1438,8 @@ class $SubscribersTable extends Subscribers
     endDate,
     monthlyFee,
     isActive,
+    subscriberType,
+    dailyFee,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1293,6 +1492,21 @@ class $SubscribersTable extends Subscribers
         isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
       );
     }
+    if (data.containsKey('subscriber_type')) {
+      context.handle(
+        _subscriberTypeMeta,
+        subscriberType.isAcceptableOrUnknown(
+          data['subscriber_type']!,
+          _subscriberTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('daily_fee')) {
+      context.handle(
+        _dailyFeeMeta,
+        dailyFee.isAcceptableOrUnknown(data['daily_fee']!, _dailyFeeMeta),
+      );
+    }
     return context;
   }
 
@@ -1326,6 +1540,14 @@ class $SubscribersTable extends Subscribers
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
       )!,
+      subscriberType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subscriber_type'],
+      )!,
+      dailyFee: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}daily_fee'],
+      ),
     );
   }
 
@@ -1342,6 +1564,12 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
   final DateTime endDate;
   final double monthlyFee;
   final bool isActive;
+
+  /// 'monthly' or 'daily'
+  final String subscriberType;
+
+  /// Fee charged per day for daily subscribers (null = use default 150).
+  final double? dailyFee;
   const Subscriber({
     required this.id,
     this.notes,
@@ -1349,6 +1577,8 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
     required this.endDate,
     required this.monthlyFee,
     required this.isActive,
+    required this.subscriberType,
+    this.dailyFee,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1361,6 +1591,10 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
     map['end_date'] = Variable<DateTime>(endDate);
     map['monthly_fee'] = Variable<double>(monthlyFee);
     map['is_active'] = Variable<bool>(isActive);
+    map['subscriber_type'] = Variable<String>(subscriberType);
+    if (!nullToAbsent || dailyFee != null) {
+      map['daily_fee'] = Variable<double>(dailyFee);
+    }
     return map;
   }
 
@@ -1374,6 +1608,10 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
       endDate: Value(endDate),
       monthlyFee: Value(monthlyFee),
       isActive: Value(isActive),
+      subscriberType: Value(subscriberType),
+      dailyFee: dailyFee == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dailyFee),
     );
   }
 
@@ -1389,6 +1627,8 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
       endDate: serializer.fromJson<DateTime>(json['endDate']),
       monthlyFee: serializer.fromJson<double>(json['monthlyFee']),
       isActive: serializer.fromJson<bool>(json['isActive']),
+      subscriberType: serializer.fromJson<String>(json['subscriberType']),
+      dailyFee: serializer.fromJson<double?>(json['dailyFee']),
     );
   }
   @override
@@ -1401,6 +1641,8 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
       'endDate': serializer.toJson<DateTime>(endDate),
       'monthlyFee': serializer.toJson<double>(monthlyFee),
       'isActive': serializer.toJson<bool>(isActive),
+      'subscriberType': serializer.toJson<String>(subscriberType),
+      'dailyFee': serializer.toJson<double?>(dailyFee),
     };
   }
 
@@ -1411,6 +1653,8 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
     DateTime? endDate,
     double? monthlyFee,
     bool? isActive,
+    String? subscriberType,
+    Value<double?> dailyFee = const Value.absent(),
   }) => Subscriber(
     id: id ?? this.id,
     notes: notes.present ? notes.value : this.notes,
@@ -1418,6 +1662,8 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
     endDate: endDate ?? this.endDate,
     monthlyFee: monthlyFee ?? this.monthlyFee,
     isActive: isActive ?? this.isActive,
+    subscriberType: subscriberType ?? this.subscriberType,
+    dailyFee: dailyFee.present ? dailyFee.value : this.dailyFee,
   );
   Subscriber copyWithCompanion(SubscribersCompanion data) {
     return Subscriber(
@@ -1429,6 +1675,10 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
           ? data.monthlyFee.value
           : this.monthlyFee,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      subscriberType: data.subscriberType.present
+          ? data.subscriberType.value
+          : this.subscriberType,
+      dailyFee: data.dailyFee.present ? data.dailyFee.value : this.dailyFee,
     );
   }
 
@@ -1440,14 +1690,24 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('monthlyFee: $monthlyFee, ')
-          ..write('isActive: $isActive')
+          ..write('isActive: $isActive, ')
+          ..write('subscriberType: $subscriberType, ')
+          ..write('dailyFee: $dailyFee')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, notes, startDate, endDate, monthlyFee, isActive);
+  int get hashCode => Object.hash(
+    id,
+    notes,
+    startDate,
+    endDate,
+    monthlyFee,
+    isActive,
+    subscriberType,
+    dailyFee,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1457,7 +1717,9 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
           other.startDate == this.startDate &&
           other.endDate == this.endDate &&
           other.monthlyFee == this.monthlyFee &&
-          other.isActive == this.isActive);
+          other.isActive == this.isActive &&
+          other.subscriberType == this.subscriberType &&
+          other.dailyFee == this.dailyFee);
 }
 
 class SubscribersCompanion extends UpdateCompanion<Subscriber> {
@@ -1467,6 +1729,8 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
   final Value<DateTime> endDate;
   final Value<double> monthlyFee;
   final Value<bool> isActive;
+  final Value<String> subscriberType;
+  final Value<double?> dailyFee;
   const SubscribersCompanion({
     this.id = const Value.absent(),
     this.notes = const Value.absent(),
@@ -1474,6 +1738,8 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
     this.endDate = const Value.absent(),
     this.monthlyFee = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.subscriberType = const Value.absent(),
+    this.dailyFee = const Value.absent(),
   });
   SubscribersCompanion.insert({
     this.id = const Value.absent(),
@@ -1482,6 +1748,8 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
     required DateTime endDate,
     required double monthlyFee,
     this.isActive = const Value.absent(),
+    this.subscriberType = const Value.absent(),
+    this.dailyFee = const Value.absent(),
   }) : startDate = Value(startDate),
        endDate = Value(endDate),
        monthlyFee = Value(monthlyFee);
@@ -1492,6 +1760,8 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
     Expression<DateTime>? endDate,
     Expression<double>? monthlyFee,
     Expression<bool>? isActive,
+    Expression<String>? subscriberType,
+    Expression<double>? dailyFee,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1500,6 +1770,8 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
       if (endDate != null) 'end_date': endDate,
       if (monthlyFee != null) 'monthly_fee': monthlyFee,
       if (isActive != null) 'is_active': isActive,
+      if (subscriberType != null) 'subscriber_type': subscriberType,
+      if (dailyFee != null) 'daily_fee': dailyFee,
     });
   }
 
@@ -1510,6 +1782,8 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
     Value<DateTime>? endDate,
     Value<double>? monthlyFee,
     Value<bool>? isActive,
+    Value<String>? subscriberType,
+    Value<double?>? dailyFee,
   }) {
     return SubscribersCompanion(
       id: id ?? this.id,
@@ -1518,6 +1792,8 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
       endDate: endDate ?? this.endDate,
       monthlyFee: monthlyFee ?? this.monthlyFee,
       isActive: isActive ?? this.isActive,
+      subscriberType: subscriberType ?? this.subscriberType,
+      dailyFee: dailyFee ?? this.dailyFee,
     );
   }
 
@@ -1542,6 +1818,12 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
+    if (subscriberType.present) {
+      map['subscriber_type'] = Variable<String>(subscriberType.value);
+    }
+    if (dailyFee.present) {
+      map['daily_fee'] = Variable<double>(dailyFee.value);
+    }
     return map;
   }
 
@@ -1553,7 +1835,9 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('monthlyFee: $monthlyFee, ')
-          ..write('isActive: $isActive')
+          ..write('isActive: $isActive, ')
+          ..write('subscriberType: $subscriberType, ')
+          ..write('dailyFee: $dailyFee')
           ..write(')'))
         .toString();
   }
@@ -1820,6 +2104,858 @@ class SubscriberPlatesCompanion extends UpdateCompanion<SubscriberPlate> {
   }
 }
 
+class $LargeVehiclePlatesTable extends LargeVehiclePlates
+    with TableInfo<$LargeVehiclePlatesTable, LargeVehiclePlate> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LargeVehiclePlatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _plateMeta = const VerificationMeta('plate');
+  @override
+  late final GeneratedColumn<String> plate = GeneratedColumn<String>(
+    'plate',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 2,
+      maxTextLength: 20,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, plate];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'large_vehicle_plates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LargeVehiclePlate> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('plate')) {
+      context.handle(
+        _plateMeta,
+        plate.isAcceptableOrUnknown(data['plate']!, _plateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_plateMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LargeVehiclePlate map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LargeVehiclePlate(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      plate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plate'],
+      )!,
+    );
+  }
+
+  @override
+  $LargeVehiclePlatesTable createAlias(String alias) {
+    return $LargeVehiclePlatesTable(attachedDatabase, alias);
+  }
+}
+
+class LargeVehiclePlate extends DataClass
+    implements Insertable<LargeVehiclePlate> {
+  final int id;
+
+  /// Normalised uppercase plate string — unique per plate.
+  final String plate;
+  const LargeVehiclePlate({required this.id, required this.plate});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['plate'] = Variable<String>(plate);
+    return map;
+  }
+
+  LargeVehiclePlatesCompanion toCompanion(bool nullToAbsent) {
+    return LargeVehiclePlatesCompanion(id: Value(id), plate: Value(plate));
+  }
+
+  factory LargeVehiclePlate.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LargeVehiclePlate(
+      id: serializer.fromJson<int>(json['id']),
+      plate: serializer.fromJson<String>(json['plate']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'plate': serializer.toJson<String>(plate),
+    };
+  }
+
+  LargeVehiclePlate copyWith({int? id, String? plate}) =>
+      LargeVehiclePlate(id: id ?? this.id, plate: plate ?? this.plate);
+  LargeVehiclePlate copyWithCompanion(LargeVehiclePlatesCompanion data) {
+    return LargeVehiclePlate(
+      id: data.id.present ? data.id.value : this.id,
+      plate: data.plate.present ? data.plate.value : this.plate,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LargeVehiclePlate(')
+          ..write('id: $id, ')
+          ..write('plate: $plate')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, plate);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LargeVehiclePlate &&
+          other.id == this.id &&
+          other.plate == this.plate);
+}
+
+class LargeVehiclePlatesCompanion extends UpdateCompanion<LargeVehiclePlate> {
+  final Value<int> id;
+  final Value<String> plate;
+  const LargeVehiclePlatesCompanion({
+    this.id = const Value.absent(),
+    this.plate = const Value.absent(),
+  });
+  LargeVehiclePlatesCompanion.insert({
+    this.id = const Value.absent(),
+    required String plate,
+  }) : plate = Value(plate);
+  static Insertable<LargeVehiclePlate> custom({
+    Expression<int>? id,
+    Expression<String>? plate,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (plate != null) 'plate': plate,
+    });
+  }
+
+  LargeVehiclePlatesCompanion copyWith({Value<int>? id, Value<String>? plate}) {
+    return LargeVehiclePlatesCompanion(
+      id: id ?? this.id,
+      plate: plate ?? this.plate,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (plate.present) {
+      map['plate'] = Variable<String>(plate.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LargeVehiclePlatesCompanion(')
+          ..write('id: $id, ')
+          ..write('plate: $plate')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RegisteredVehiclesTable extends RegisteredVehicles
+    with TableInfo<$RegisteredVehiclesTable, RegisteredVehicle> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RegisteredVehiclesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _plateMeta = const VerificationMeta('plate');
+  @override
+  late final GeneratedColumn<String> plate = GeneratedColumn<String>(
+    'plate',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 2,
+      maxTextLength: 20,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _vehicleTypeMeta = const VerificationMeta(
+    'vehicleType',
+  );
+  @override
+  late final GeneratedColumn<String> vehicleType = GeneratedColumn<String>(
+    'vehicle_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('normal'),
+  );
+  static const VerificationMeta _subscriptionTypeMeta = const VerificationMeta(
+    'subscriptionType',
+  );
+  @override
+  late final GeneratedColumn<String> subscriptionType = GeneratedColumn<String>(
+    'subscription_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('none'),
+  );
+  static const VerificationMeta _subscriptionStartDateMeta =
+      const VerificationMeta('subscriptionStartDate');
+  @override
+  late final GeneratedColumn<DateTime> subscriptionStartDate =
+      GeneratedColumn<DateTime>(
+        'subscription_start_date',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _subscriptionEndDateMeta =
+      const VerificationMeta('subscriptionEndDate');
+  @override
+  late final GeneratedColumn<DateTime> subscriptionEndDate =
+      GeneratedColumn<DateTime>(
+        'subscription_end_date',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _dailyFeeMeta = const VerificationMeta(
+    'dailyFee',
+  );
+  @override
+  late final GeneratedColumn<double> dailyFee = GeneratedColumn<double>(
+    'daily_fee',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(150.0),
+  );
+  static const VerificationMeta _monthlyFeeMeta = const VerificationMeta(
+    'monthlyFee',
+  );
+  @override
+  late final GeneratedColumn<double> monthlyFee = GeneratedColumn<double>(
+    'monthly_fee',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    plate,
+    vehicleType,
+    subscriptionType,
+    subscriptionStartDate,
+    subscriptionEndDate,
+    dailyFee,
+    monthlyFee,
+    notes,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'registered_vehicles';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RegisteredVehicle> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('plate')) {
+      context.handle(
+        _plateMeta,
+        plate.isAcceptableOrUnknown(data['plate']!, _plateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_plateMeta);
+    }
+    if (data.containsKey('vehicle_type')) {
+      context.handle(
+        _vehicleTypeMeta,
+        vehicleType.isAcceptableOrUnknown(
+          data['vehicle_type']!,
+          _vehicleTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('subscription_type')) {
+      context.handle(
+        _subscriptionTypeMeta,
+        subscriptionType.isAcceptableOrUnknown(
+          data['subscription_type']!,
+          _subscriptionTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('subscription_start_date')) {
+      context.handle(
+        _subscriptionStartDateMeta,
+        subscriptionStartDate.isAcceptableOrUnknown(
+          data['subscription_start_date']!,
+          _subscriptionStartDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('subscription_end_date')) {
+      context.handle(
+        _subscriptionEndDateMeta,
+        subscriptionEndDate.isAcceptableOrUnknown(
+          data['subscription_end_date']!,
+          _subscriptionEndDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('daily_fee')) {
+      context.handle(
+        _dailyFeeMeta,
+        dailyFee.isAcceptableOrUnknown(data['daily_fee']!, _dailyFeeMeta),
+      );
+    }
+    if (data.containsKey('monthly_fee')) {
+      context.handle(
+        _monthlyFeeMeta,
+        monthlyFee.isAcceptableOrUnknown(data['monthly_fee']!, _monthlyFeeMeta),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {plate},
+  ];
+  @override
+  RegisteredVehicle map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RegisteredVehicle(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      plate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plate'],
+      )!,
+      vehicleType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vehicle_type'],
+      )!,
+      subscriptionType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subscription_type'],
+      )!,
+      subscriptionStartDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}subscription_start_date'],
+      ),
+      subscriptionEndDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}subscription_end_date'],
+      ),
+      dailyFee: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}daily_fee'],
+      )!,
+      monthlyFee: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}monthly_fee'],
+      )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RegisteredVehiclesTable createAlias(String alias) {
+    return $RegisteredVehiclesTable(attachedDatabase, alias);
+  }
+}
+
+class RegisteredVehicle extends DataClass
+    implements Insertable<RegisteredVehicle> {
+  final int id;
+
+  /// Normalised uppercase plate — unique per vehicle.
+  final String plate;
+
+  /// 'normal' | 'large'
+  final String vehicleType;
+
+  /// 'none' | 'daily' | 'monthly'
+  final String subscriptionType;
+
+  /// When the current monthly subscription period started.
+  final DateTime? subscriptionStartDate;
+
+  /// When the current monthly subscription period ends (start + 30 days).
+  final DateTime? subscriptionEndDate;
+
+  /// Per-day fee for daily subscribers.
+  final double dailyFee;
+
+  /// Monthly fee amount (loaded from tariff at registration/renewal).
+  final double monthlyFee;
+  final String? notes;
+  final DateTime createdAt;
+  const RegisteredVehicle({
+    required this.id,
+    required this.plate,
+    required this.vehicleType,
+    required this.subscriptionType,
+    this.subscriptionStartDate,
+    this.subscriptionEndDate,
+    required this.dailyFee,
+    required this.monthlyFee,
+    this.notes,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['plate'] = Variable<String>(plate);
+    map['vehicle_type'] = Variable<String>(vehicleType);
+    map['subscription_type'] = Variable<String>(subscriptionType);
+    if (!nullToAbsent || subscriptionStartDate != null) {
+      map['subscription_start_date'] = Variable<DateTime>(
+        subscriptionStartDate,
+      );
+    }
+    if (!nullToAbsent || subscriptionEndDate != null) {
+      map['subscription_end_date'] = Variable<DateTime>(subscriptionEndDate);
+    }
+    map['daily_fee'] = Variable<double>(dailyFee);
+    map['monthly_fee'] = Variable<double>(monthlyFee);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  RegisteredVehiclesCompanion toCompanion(bool nullToAbsent) {
+    return RegisteredVehiclesCompanion(
+      id: Value(id),
+      plate: Value(plate),
+      vehicleType: Value(vehicleType),
+      subscriptionType: Value(subscriptionType),
+      subscriptionStartDate: subscriptionStartDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subscriptionStartDate),
+      subscriptionEndDate: subscriptionEndDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subscriptionEndDate),
+      dailyFee: Value(dailyFee),
+      monthlyFee: Value(monthlyFee),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory RegisteredVehicle.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RegisteredVehicle(
+      id: serializer.fromJson<int>(json['id']),
+      plate: serializer.fromJson<String>(json['plate']),
+      vehicleType: serializer.fromJson<String>(json['vehicleType']),
+      subscriptionType: serializer.fromJson<String>(json['subscriptionType']),
+      subscriptionStartDate: serializer.fromJson<DateTime?>(
+        json['subscriptionStartDate'],
+      ),
+      subscriptionEndDate: serializer.fromJson<DateTime?>(
+        json['subscriptionEndDate'],
+      ),
+      dailyFee: serializer.fromJson<double>(json['dailyFee']),
+      monthlyFee: serializer.fromJson<double>(json['monthlyFee']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'plate': serializer.toJson<String>(plate),
+      'vehicleType': serializer.toJson<String>(vehicleType),
+      'subscriptionType': serializer.toJson<String>(subscriptionType),
+      'subscriptionStartDate': serializer.toJson<DateTime?>(
+        subscriptionStartDate,
+      ),
+      'subscriptionEndDate': serializer.toJson<DateTime?>(subscriptionEndDate),
+      'dailyFee': serializer.toJson<double>(dailyFee),
+      'monthlyFee': serializer.toJson<double>(monthlyFee),
+      'notes': serializer.toJson<String?>(notes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  RegisteredVehicle copyWith({
+    int? id,
+    String? plate,
+    String? vehicleType,
+    String? subscriptionType,
+    Value<DateTime?> subscriptionStartDate = const Value.absent(),
+    Value<DateTime?> subscriptionEndDate = const Value.absent(),
+    double? dailyFee,
+    double? monthlyFee,
+    Value<String?> notes = const Value.absent(),
+    DateTime? createdAt,
+  }) => RegisteredVehicle(
+    id: id ?? this.id,
+    plate: plate ?? this.plate,
+    vehicleType: vehicleType ?? this.vehicleType,
+    subscriptionType: subscriptionType ?? this.subscriptionType,
+    subscriptionStartDate: subscriptionStartDate.present
+        ? subscriptionStartDate.value
+        : this.subscriptionStartDate,
+    subscriptionEndDate: subscriptionEndDate.present
+        ? subscriptionEndDate.value
+        : this.subscriptionEndDate,
+    dailyFee: dailyFee ?? this.dailyFee,
+    monthlyFee: monthlyFee ?? this.monthlyFee,
+    notes: notes.present ? notes.value : this.notes,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  RegisteredVehicle copyWithCompanion(RegisteredVehiclesCompanion data) {
+    return RegisteredVehicle(
+      id: data.id.present ? data.id.value : this.id,
+      plate: data.plate.present ? data.plate.value : this.plate,
+      vehicleType: data.vehicleType.present
+          ? data.vehicleType.value
+          : this.vehicleType,
+      subscriptionType: data.subscriptionType.present
+          ? data.subscriptionType.value
+          : this.subscriptionType,
+      subscriptionStartDate: data.subscriptionStartDate.present
+          ? data.subscriptionStartDate.value
+          : this.subscriptionStartDate,
+      subscriptionEndDate: data.subscriptionEndDate.present
+          ? data.subscriptionEndDate.value
+          : this.subscriptionEndDate,
+      dailyFee: data.dailyFee.present ? data.dailyFee.value : this.dailyFee,
+      monthlyFee: data.monthlyFee.present
+          ? data.monthlyFee.value
+          : this.monthlyFee,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RegisteredVehicle(')
+          ..write('id: $id, ')
+          ..write('plate: $plate, ')
+          ..write('vehicleType: $vehicleType, ')
+          ..write('subscriptionType: $subscriptionType, ')
+          ..write('subscriptionStartDate: $subscriptionStartDate, ')
+          ..write('subscriptionEndDate: $subscriptionEndDate, ')
+          ..write('dailyFee: $dailyFee, ')
+          ..write('monthlyFee: $monthlyFee, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    plate,
+    vehicleType,
+    subscriptionType,
+    subscriptionStartDate,
+    subscriptionEndDate,
+    dailyFee,
+    monthlyFee,
+    notes,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RegisteredVehicle &&
+          other.id == this.id &&
+          other.plate == this.plate &&
+          other.vehicleType == this.vehicleType &&
+          other.subscriptionType == this.subscriptionType &&
+          other.subscriptionStartDate == this.subscriptionStartDate &&
+          other.subscriptionEndDate == this.subscriptionEndDate &&
+          other.dailyFee == this.dailyFee &&
+          other.monthlyFee == this.monthlyFee &&
+          other.notes == this.notes &&
+          other.createdAt == this.createdAt);
+}
+
+class RegisteredVehiclesCompanion extends UpdateCompanion<RegisteredVehicle> {
+  final Value<int> id;
+  final Value<String> plate;
+  final Value<String> vehicleType;
+  final Value<String> subscriptionType;
+  final Value<DateTime?> subscriptionStartDate;
+  final Value<DateTime?> subscriptionEndDate;
+  final Value<double> dailyFee;
+  final Value<double> monthlyFee;
+  final Value<String?> notes;
+  final Value<DateTime> createdAt;
+  const RegisteredVehiclesCompanion({
+    this.id = const Value.absent(),
+    this.plate = const Value.absent(),
+    this.vehicleType = const Value.absent(),
+    this.subscriptionType = const Value.absent(),
+    this.subscriptionStartDate = const Value.absent(),
+    this.subscriptionEndDate = const Value.absent(),
+    this.dailyFee = const Value.absent(),
+    this.monthlyFee = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  RegisteredVehiclesCompanion.insert({
+    this.id = const Value.absent(),
+    required String plate,
+    this.vehicleType = const Value.absent(),
+    this.subscriptionType = const Value.absent(),
+    this.subscriptionStartDate = const Value.absent(),
+    this.subscriptionEndDate = const Value.absent(),
+    this.dailyFee = const Value.absent(),
+    this.monthlyFee = const Value.absent(),
+    this.notes = const Value.absent(),
+    required DateTime createdAt,
+  }) : plate = Value(plate),
+       createdAt = Value(createdAt);
+  static Insertable<RegisteredVehicle> custom({
+    Expression<int>? id,
+    Expression<String>? plate,
+    Expression<String>? vehicleType,
+    Expression<String>? subscriptionType,
+    Expression<DateTime>? subscriptionStartDate,
+    Expression<DateTime>? subscriptionEndDate,
+    Expression<double>? dailyFee,
+    Expression<double>? monthlyFee,
+    Expression<String>? notes,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (plate != null) 'plate': plate,
+      if (vehicleType != null) 'vehicle_type': vehicleType,
+      if (subscriptionType != null) 'subscription_type': subscriptionType,
+      if (subscriptionStartDate != null)
+        'subscription_start_date': subscriptionStartDate,
+      if (subscriptionEndDate != null)
+        'subscription_end_date': subscriptionEndDate,
+      if (dailyFee != null) 'daily_fee': dailyFee,
+      if (monthlyFee != null) 'monthly_fee': monthlyFee,
+      if (notes != null) 'notes': notes,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  RegisteredVehiclesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? plate,
+    Value<String>? vehicleType,
+    Value<String>? subscriptionType,
+    Value<DateTime?>? subscriptionStartDate,
+    Value<DateTime?>? subscriptionEndDate,
+    Value<double>? dailyFee,
+    Value<double>? monthlyFee,
+    Value<String?>? notes,
+    Value<DateTime>? createdAt,
+  }) {
+    return RegisteredVehiclesCompanion(
+      id: id ?? this.id,
+      plate: plate ?? this.plate,
+      vehicleType: vehicleType ?? this.vehicleType,
+      subscriptionType: subscriptionType ?? this.subscriptionType,
+      subscriptionStartDate:
+          subscriptionStartDate ?? this.subscriptionStartDate,
+      subscriptionEndDate: subscriptionEndDate ?? this.subscriptionEndDate,
+      dailyFee: dailyFee ?? this.dailyFee,
+      monthlyFee: monthlyFee ?? this.monthlyFee,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (plate.present) {
+      map['plate'] = Variable<String>(plate.value);
+    }
+    if (vehicleType.present) {
+      map['vehicle_type'] = Variable<String>(vehicleType.value);
+    }
+    if (subscriptionType.present) {
+      map['subscription_type'] = Variable<String>(subscriptionType.value);
+    }
+    if (subscriptionStartDate.present) {
+      map['subscription_start_date'] = Variable<DateTime>(
+        subscriptionStartDate.value,
+      );
+    }
+    if (subscriptionEndDate.present) {
+      map['subscription_end_date'] = Variable<DateTime>(
+        subscriptionEndDate.value,
+      );
+    }
+    if (dailyFee.present) {
+      map['daily_fee'] = Variable<double>(dailyFee.value);
+    }
+    if (monthlyFee.present) {
+      map['monthly_fee'] = Variable<double>(monthlyFee.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RegisteredVehiclesCompanion(')
+          ..write('id: $id, ')
+          ..write('plate: $plate, ')
+          ..write('vehicleType: $vehicleType, ')
+          ..write('subscriptionType: $subscriptionType, ')
+          ..write('subscriptionStartDate: $subscriptionStartDate, ')
+          ..write('subscriptionEndDate: $subscriptionEndDate, ')
+          ..write('dailyFee: $dailyFee, ')
+          ..write('monthlyFee: $monthlyFee, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1829,6 +2965,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SubscriberPlatesTable subscriberPlates = $SubscriberPlatesTable(
     this,
   );
+  late final $LargeVehiclePlatesTable largeVehiclePlates =
+      $LargeVehiclePlatesTable(this);
+  late final $RegisteredVehiclesTable registeredVehicles =
+      $RegisteredVehiclesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1838,6 +2978,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     parkingRecords,
     subscribers,
     subscriberPlates,
+    largeVehiclePlates,
+    registeredVehicles,
   ];
 }
 
@@ -1848,6 +2990,7 @@ typedef $$TariffsTableCreateCompanionBuilder =
       required String bracketsJson,
       required double fullDayPrice,
       required double monthlyPrice,
+      Value<double> dailySubscriptionPrice,
       required DateTime validFrom,
       Value<DateTime?> validTo,
       Value<bool> isActive,
@@ -1859,6 +3002,7 @@ typedef $$TariffsTableUpdateCompanionBuilder =
       Value<String> bracketsJson,
       Value<double> fullDayPrice,
       Value<double> monthlyPrice,
+      Value<double> dailySubscriptionPrice,
       Value<DateTime> validFrom,
       Value<DateTime?> validTo,
       Value<bool> isActive,
@@ -1918,6 +3062,11 @@ class $$TariffsTableFilterComposer
 
   ColumnFilters<double> get monthlyPrice => $composableBuilder(
     column: $table.monthlyPrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get dailySubscriptionPrice => $composableBuilder(
+    column: $table.dailySubscriptionPrice,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1996,6 +3145,11 @@ class $$TariffsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get dailySubscriptionPrice => $composableBuilder(
+    column: $table.dailySubscriptionPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get validFrom => $composableBuilder(
     column: $table.validFrom,
     builder: (column) => ColumnOrderings(column),
@@ -2039,6 +3193,11 @@ class $$TariffsTableAnnotationComposer
 
   GeneratedColumn<double> get monthlyPrice => $composableBuilder(
     column: $table.monthlyPrice,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get dailySubscriptionPrice => $composableBuilder(
+    column: $table.dailySubscriptionPrice,
     builder: (column) => column,
   );
 
@@ -2110,6 +3269,7 @@ class $$TariffsTableTableManager
                 Value<String> bracketsJson = const Value.absent(),
                 Value<double> fullDayPrice = const Value.absent(),
                 Value<double> monthlyPrice = const Value.absent(),
+                Value<double> dailySubscriptionPrice = const Value.absent(),
                 Value<DateTime> validFrom = const Value.absent(),
                 Value<DateTime?> validTo = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -2119,6 +3279,7 @@ class $$TariffsTableTableManager
                 bracketsJson: bracketsJson,
                 fullDayPrice: fullDayPrice,
                 monthlyPrice: monthlyPrice,
+                dailySubscriptionPrice: dailySubscriptionPrice,
                 validFrom: validFrom,
                 validTo: validTo,
                 isActive: isActive,
@@ -2130,6 +3291,7 @@ class $$TariffsTableTableManager
                 required String bracketsJson,
                 required double fullDayPrice,
                 required double monthlyPrice,
+                Value<double> dailySubscriptionPrice = const Value.absent(),
                 required DateTime validFrom,
                 Value<DateTime?> validTo = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -2139,6 +3301,7 @@ class $$TariffsTableTableManager
                 bracketsJson: bracketsJson,
                 fullDayPrice: fullDayPrice,
                 monthlyPrice: monthlyPrice,
+                dailySubscriptionPrice: dailySubscriptionPrice,
                 validFrom: validFrom,
                 validTo: validTo,
                 isActive: isActive,
@@ -2210,6 +3373,8 @@ typedef $$ParkingRecordsTableCreateCompanionBuilder =
       Value<String?> tariffNameSnapshot,
       Value<double?> calculatedCost,
       Value<bool> isSubscriber,
+      Value<bool> isLargeVehicle,
+      Value<bool> isDailySubscriber,
       Value<String> status,
       Value<String?> notes,
     });
@@ -2223,6 +3388,8 @@ typedef $$ParkingRecordsTableUpdateCompanionBuilder =
       Value<String?> tariffNameSnapshot,
       Value<double?> calculatedCost,
       Value<bool> isSubscriber,
+      Value<bool> isLargeVehicle,
+      Value<bool> isDailySubscriber,
       Value<String> status,
       Value<String?> notes,
     });
@@ -2296,6 +3463,16 @@ class $$ParkingRecordsTableFilterComposer
 
   ColumnFilters<bool> get isSubscriber => $composableBuilder(
     column: $table.isSubscriber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isLargeVehicle => $composableBuilder(
+    column: $table.isLargeVehicle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDailySubscriber => $composableBuilder(
+    column: $table.isDailySubscriber,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2377,6 +3554,16 @@ class $$ParkingRecordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isLargeVehicle => $composableBuilder(
+    column: $table.isLargeVehicle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDailySubscriber => $composableBuilder(
+    column: $table.isDailySubscriber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -2444,6 +3631,16 @@ class $$ParkingRecordsTableAnnotationComposer
 
   GeneratedColumn<bool> get isSubscriber => $composableBuilder(
     column: $table.isSubscriber,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isLargeVehicle => $composableBuilder(
+    column: $table.isLargeVehicle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDailySubscriber => $composableBuilder(
+    column: $table.isDailySubscriber,
     builder: (column) => column,
   );
 
@@ -2515,6 +3712,8 @@ class $$ParkingRecordsTableTableManager
                 Value<String?> tariffNameSnapshot = const Value.absent(),
                 Value<double?> calculatedCost = const Value.absent(),
                 Value<bool> isSubscriber = const Value.absent(),
+                Value<bool> isLargeVehicle = const Value.absent(),
+                Value<bool> isDailySubscriber = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
               }) => ParkingRecordsCompanion(
@@ -2526,6 +3725,8 @@ class $$ParkingRecordsTableTableManager
                 tariffNameSnapshot: tariffNameSnapshot,
                 calculatedCost: calculatedCost,
                 isSubscriber: isSubscriber,
+                isLargeVehicle: isLargeVehicle,
+                isDailySubscriber: isDailySubscriber,
                 status: status,
                 notes: notes,
               ),
@@ -2539,6 +3740,8 @@ class $$ParkingRecordsTableTableManager
                 Value<String?> tariffNameSnapshot = const Value.absent(),
                 Value<double?> calculatedCost = const Value.absent(),
                 Value<bool> isSubscriber = const Value.absent(),
+                Value<bool> isLargeVehicle = const Value.absent(),
+                Value<bool> isDailySubscriber = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
               }) => ParkingRecordsCompanion.insert(
@@ -2550,6 +3753,8 @@ class $$ParkingRecordsTableTableManager
                 tariffNameSnapshot: tariffNameSnapshot,
                 calculatedCost: calculatedCost,
                 isSubscriber: isSubscriber,
+                isLargeVehicle: isLargeVehicle,
+                isDailySubscriber: isDailySubscriber,
                 status: status,
                 notes: notes,
               ),
@@ -2629,6 +3834,8 @@ typedef $$SubscribersTableCreateCompanionBuilder =
       required DateTime endDate,
       required double monthlyFee,
       Value<bool> isActive,
+      Value<String> subscriberType,
+      Value<double?> dailyFee,
     });
 typedef $$SubscribersTableUpdateCompanionBuilder =
     SubscribersCompanion Function({
@@ -2638,6 +3845,8 @@ typedef $$SubscribersTableUpdateCompanionBuilder =
       Value<DateTime> endDate,
       Value<double> monthlyFee,
       Value<bool> isActive,
+      Value<String> subscriberType,
+      Value<double?> dailyFee,
     });
 
 final class $$SubscribersTableReferences
@@ -2707,6 +3916,16 @@ class $$SubscribersTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get subscriberType => $composableBuilder(
+    column: $table.subscriberType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get dailyFee => $composableBuilder(
+    column: $table.dailyFee,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> subscriberPlatesRefs(
     Expression<bool> Function($$SubscriberPlatesTableFilterComposer f) f,
   ) {
@@ -2771,6 +3990,16 @@ class $$SubscribersTableOrderingComposer
     column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get subscriberType => $composableBuilder(
+    column: $table.subscriberType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get dailyFee => $composableBuilder(
+    column: $table.dailyFee,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SubscribersTableAnnotationComposer
@@ -2801,6 +4030,14 @@ class $$SubscribersTableAnnotationComposer
 
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<String> get subscriberType => $composableBuilder(
+    column: $table.subscriberType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get dailyFee =>
+      $composableBuilder(column: $table.dailyFee, builder: (column) => column);
 
   Expression<T> subscriberPlatesRefs<T extends Object>(
     Expression<T> Function($$SubscriberPlatesTableAnnotationComposer a) f,
@@ -2862,6 +4099,8 @@ class $$SubscribersTableTableManager
                 Value<DateTime> endDate = const Value.absent(),
                 Value<double> monthlyFee = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<String> subscriberType = const Value.absent(),
+                Value<double?> dailyFee = const Value.absent(),
               }) => SubscribersCompanion(
                 id: id,
                 notes: notes,
@@ -2869,6 +4108,8 @@ class $$SubscribersTableTableManager
                 endDate: endDate,
                 monthlyFee: monthlyFee,
                 isActive: isActive,
+                subscriberType: subscriberType,
+                dailyFee: dailyFee,
               ),
           createCompanionCallback:
               ({
@@ -2878,6 +4119,8 @@ class $$SubscribersTableTableManager
                 required DateTime endDate,
                 required double monthlyFee,
                 Value<bool> isActive = const Value.absent(),
+                Value<String> subscriberType = const Value.absent(),
+                Value<double?> dailyFee = const Value.absent(),
               }) => SubscribersCompanion.insert(
                 id: id,
                 notes: notes,
@@ -2885,6 +4128,8 @@ class $$SubscribersTableTableManager
                 endDate: endDate,
                 monthlyFee: monthlyFee,
                 isActive: isActive,
+                subscriberType: subscriberType,
+                dailyFee: dailyFee,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -3233,6 +4478,457 @@ typedef $$SubscriberPlatesTableProcessedTableManager =
       SubscriberPlate,
       PrefetchHooks Function({bool subscriberId})
     >;
+typedef $$LargeVehiclePlatesTableCreateCompanionBuilder =
+    LargeVehiclePlatesCompanion Function({
+      Value<int> id,
+      required String plate,
+    });
+typedef $$LargeVehiclePlatesTableUpdateCompanionBuilder =
+    LargeVehiclePlatesCompanion Function({Value<int> id, Value<String> plate});
+
+class $$LargeVehiclePlatesTableFilterComposer
+    extends Composer<_$AppDatabase, $LargeVehiclePlatesTable> {
+  $$LargeVehiclePlatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get plate => $composableBuilder(
+    column: $table.plate,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LargeVehiclePlatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $LargeVehiclePlatesTable> {
+  $$LargeVehiclePlatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get plate => $composableBuilder(
+    column: $table.plate,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LargeVehiclePlatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LargeVehiclePlatesTable> {
+  $$LargeVehiclePlatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get plate =>
+      $composableBuilder(column: $table.plate, builder: (column) => column);
+}
+
+class $$LargeVehiclePlatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LargeVehiclePlatesTable,
+          LargeVehiclePlate,
+          $$LargeVehiclePlatesTableFilterComposer,
+          $$LargeVehiclePlatesTableOrderingComposer,
+          $$LargeVehiclePlatesTableAnnotationComposer,
+          $$LargeVehiclePlatesTableCreateCompanionBuilder,
+          $$LargeVehiclePlatesTableUpdateCompanionBuilder,
+          (
+            LargeVehiclePlate,
+            BaseReferences<
+              _$AppDatabase,
+              $LargeVehiclePlatesTable,
+              LargeVehiclePlate
+            >,
+          ),
+          LargeVehiclePlate,
+          PrefetchHooks Function()
+        > {
+  $$LargeVehiclePlatesTableTableManager(
+    _$AppDatabase db,
+    $LargeVehiclePlatesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LargeVehiclePlatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LargeVehiclePlatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LargeVehiclePlatesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> plate = const Value.absent(),
+              }) => LargeVehiclePlatesCompanion(id: id, plate: plate),
+          createCompanionCallback:
+              ({Value<int> id = const Value.absent(), required String plate}) =>
+                  LargeVehiclePlatesCompanion.insert(id: id, plate: plate),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LargeVehiclePlatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LargeVehiclePlatesTable,
+      LargeVehiclePlate,
+      $$LargeVehiclePlatesTableFilterComposer,
+      $$LargeVehiclePlatesTableOrderingComposer,
+      $$LargeVehiclePlatesTableAnnotationComposer,
+      $$LargeVehiclePlatesTableCreateCompanionBuilder,
+      $$LargeVehiclePlatesTableUpdateCompanionBuilder,
+      (
+        LargeVehiclePlate,
+        BaseReferences<
+          _$AppDatabase,
+          $LargeVehiclePlatesTable,
+          LargeVehiclePlate
+        >,
+      ),
+      LargeVehiclePlate,
+      PrefetchHooks Function()
+    >;
+typedef $$RegisteredVehiclesTableCreateCompanionBuilder =
+    RegisteredVehiclesCompanion Function({
+      Value<int> id,
+      required String plate,
+      Value<String> vehicleType,
+      Value<String> subscriptionType,
+      Value<DateTime?> subscriptionStartDate,
+      Value<DateTime?> subscriptionEndDate,
+      Value<double> dailyFee,
+      Value<double> monthlyFee,
+      Value<String?> notes,
+      required DateTime createdAt,
+    });
+typedef $$RegisteredVehiclesTableUpdateCompanionBuilder =
+    RegisteredVehiclesCompanion Function({
+      Value<int> id,
+      Value<String> plate,
+      Value<String> vehicleType,
+      Value<String> subscriptionType,
+      Value<DateTime?> subscriptionStartDate,
+      Value<DateTime?> subscriptionEndDate,
+      Value<double> dailyFee,
+      Value<double> monthlyFee,
+      Value<String?> notes,
+      Value<DateTime> createdAt,
+    });
+
+class $$RegisteredVehiclesTableFilterComposer
+    extends Composer<_$AppDatabase, $RegisteredVehiclesTable> {
+  $$RegisteredVehiclesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get plate => $composableBuilder(
+    column: $table.plate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get vehicleType => $composableBuilder(
+    column: $table.vehicleType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subscriptionType => $composableBuilder(
+    column: $table.subscriptionType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get subscriptionStartDate => $composableBuilder(
+    column: $table.subscriptionStartDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get subscriptionEndDate => $composableBuilder(
+    column: $table.subscriptionEndDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get dailyFee => $composableBuilder(
+    column: $table.dailyFee,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get monthlyFee => $composableBuilder(
+    column: $table.monthlyFee,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RegisteredVehiclesTableOrderingComposer
+    extends Composer<_$AppDatabase, $RegisteredVehiclesTable> {
+  $$RegisteredVehiclesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get plate => $composableBuilder(
+    column: $table.plate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get vehicleType => $composableBuilder(
+    column: $table.vehicleType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subscriptionType => $composableBuilder(
+    column: $table.subscriptionType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get subscriptionStartDate => $composableBuilder(
+    column: $table.subscriptionStartDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get subscriptionEndDate => $composableBuilder(
+    column: $table.subscriptionEndDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get dailyFee => $composableBuilder(
+    column: $table.dailyFee,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get monthlyFee => $composableBuilder(
+    column: $table.monthlyFee,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RegisteredVehiclesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RegisteredVehiclesTable> {
+  $$RegisteredVehiclesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get plate =>
+      $composableBuilder(column: $table.plate, builder: (column) => column);
+
+  GeneratedColumn<String> get vehicleType => $composableBuilder(
+    column: $table.vehicleType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get subscriptionType => $composableBuilder(
+    column: $table.subscriptionType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get subscriptionStartDate => $composableBuilder(
+    column: $table.subscriptionStartDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get subscriptionEndDate => $composableBuilder(
+    column: $table.subscriptionEndDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get dailyFee =>
+      $composableBuilder(column: $table.dailyFee, builder: (column) => column);
+
+  GeneratedColumn<double> get monthlyFee => $composableBuilder(
+    column: $table.monthlyFee,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$RegisteredVehiclesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RegisteredVehiclesTable,
+          RegisteredVehicle,
+          $$RegisteredVehiclesTableFilterComposer,
+          $$RegisteredVehiclesTableOrderingComposer,
+          $$RegisteredVehiclesTableAnnotationComposer,
+          $$RegisteredVehiclesTableCreateCompanionBuilder,
+          $$RegisteredVehiclesTableUpdateCompanionBuilder,
+          (
+            RegisteredVehicle,
+            BaseReferences<
+              _$AppDatabase,
+              $RegisteredVehiclesTable,
+              RegisteredVehicle
+            >,
+          ),
+          RegisteredVehicle,
+          PrefetchHooks Function()
+        > {
+  $$RegisteredVehiclesTableTableManager(
+    _$AppDatabase db,
+    $RegisteredVehiclesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RegisteredVehiclesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RegisteredVehiclesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RegisteredVehiclesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> plate = const Value.absent(),
+                Value<String> vehicleType = const Value.absent(),
+                Value<String> subscriptionType = const Value.absent(),
+                Value<DateTime?> subscriptionStartDate = const Value.absent(),
+                Value<DateTime?> subscriptionEndDate = const Value.absent(),
+                Value<double> dailyFee = const Value.absent(),
+                Value<double> monthlyFee = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => RegisteredVehiclesCompanion(
+                id: id,
+                plate: plate,
+                vehicleType: vehicleType,
+                subscriptionType: subscriptionType,
+                subscriptionStartDate: subscriptionStartDate,
+                subscriptionEndDate: subscriptionEndDate,
+                dailyFee: dailyFee,
+                monthlyFee: monthlyFee,
+                notes: notes,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String plate,
+                Value<String> vehicleType = const Value.absent(),
+                Value<String> subscriptionType = const Value.absent(),
+                Value<DateTime?> subscriptionStartDate = const Value.absent(),
+                Value<DateTime?> subscriptionEndDate = const Value.absent(),
+                Value<double> dailyFee = const Value.absent(),
+                Value<double> monthlyFee = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                required DateTime createdAt,
+              }) => RegisteredVehiclesCompanion.insert(
+                id: id,
+                plate: plate,
+                vehicleType: vehicleType,
+                subscriptionType: subscriptionType,
+                subscriptionStartDate: subscriptionStartDate,
+                subscriptionEndDate: subscriptionEndDate,
+                dailyFee: dailyFee,
+                monthlyFee: monthlyFee,
+                notes: notes,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RegisteredVehiclesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RegisteredVehiclesTable,
+      RegisteredVehicle,
+      $$RegisteredVehiclesTableFilterComposer,
+      $$RegisteredVehiclesTableOrderingComposer,
+      $$RegisteredVehiclesTableAnnotationComposer,
+      $$RegisteredVehiclesTableCreateCompanionBuilder,
+      $$RegisteredVehiclesTableUpdateCompanionBuilder,
+      (
+        RegisteredVehicle,
+        BaseReferences<
+          _$AppDatabase,
+          $RegisteredVehiclesTable,
+          RegisteredVehicle
+        >,
+      ),
+      RegisteredVehicle,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3245,4 +4941,8 @@ class $AppDatabaseManager {
       $$SubscribersTableTableManager(_db, _db.subscribers);
   $$SubscriberPlatesTableTableManager get subscriberPlates =>
       $$SubscriberPlatesTableTableManager(_db, _db.subscriberPlates);
+  $$LargeVehiclePlatesTableTableManager get largeVehiclePlates =>
+      $$LargeVehiclePlatesTableTableManager(_db, _db.largeVehiclePlates);
+  $$RegisteredVehiclesTableTableManager get registeredVehicles =>
+      $$RegisteredVehiclesTableTableManager(_db, _db.registeredVehicles);
 }

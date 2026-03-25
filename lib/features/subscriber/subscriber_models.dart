@@ -2,6 +2,8 @@ import '../../database/database.dart';
 
 enum SubStatus { active, expiringSoon, expired }
 
+enum SubType { monthly, daily }
+
 class SubscriberWithPlates {
   final Subscriber subscriber;
   final List<SubscriberPlate> plates;
@@ -10,6 +12,9 @@ class SubscriberWithPlates {
     required this.subscriber,
     required this.plates,
   });
+
+  SubType get type =>
+      subscriber.subscriberType == 'daily' ? SubType.daily : SubType.monthly;
 
   SubStatus get status {
     final now = DateTime.now();
@@ -26,6 +31,10 @@ class SubscriberWithPlates {
 
   /// Human-readable status label in Turkish.
   String get statusLabel {
+    // Daily subscribers don't expire in the traditional sense.
+    if (type == SubType.daily) {
+      return subscriber.isActive ? 'Aktif' : 'Pasif';
+    }
     switch (status) {
       case SubStatus.active:
         final days = daysRemaining;
@@ -51,7 +60,6 @@ DateTime addOneMonth(DateTime from) {
     newMonth -= 12;
     newYear += 1;
   }
-  // Handle months with fewer days (e.g. Jan 31 + 1 month = Feb 28/29).
   final lastDayOfNewMonth = DateTime(newYear, newMonth + 1, 0).day;
   final day = from.day > lastDayOfNewMonth ? lastDayOfNewMonth : from.day;
   return DateTime(newYear, newMonth, day);

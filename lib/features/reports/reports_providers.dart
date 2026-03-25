@@ -12,3 +12,12 @@ final reportDataProvider =
       .watchRecordsByDateRange(from, to)
       .map(ReportData.fromRecords);
 });
+
+/// Custom date range report data — used when user picks a specific range.
+final customReportDataProvider =
+    StreamProvider.family<ReportData, (DateTime, DateTime)>((ref, range) {
+  final db = ref.watch(databaseProvider);
+  return db
+      .watchRecordsByDateRange(range.$1, range.$2)
+      .map(ReportData.fromRecords);
+});

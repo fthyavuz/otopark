@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../active_cars/active_cars_providers.dart';
 import 'reports_models.dart';
@@ -16,18 +17,64 @@ class ReportsScreen extends ConsumerStatefulWidget {
 }
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
-  ReportPeriod _period = ReportPeriod.today;
+  ReportPeriod? _period = ReportPeriod.today;
+  DateTime? _customFrom;
+  DateTime? _customTo;
+
+  bool get _isCustom => _period == null;
+
+  String get _rangeLabel {
+    if (!_isCustom) return _period!.rangeLabel;
+    if (_customFrom == null || _customTo == null) return 'Tarih seçin';
+    final fmt = DateFormat('d MMM yyyy', 'tr_TR');
+    final to = _customTo!.subtract(const Duration(days: 1));
+    return '${fmt.format(_customFrom!)} – ${fmt.format(to)}';
+  }
+
+  AsyncValue<ReportData> get _dataAsync {
+    if (!_isCustom) return ref.watch(reportDataProvider(_period!));
+    if (_customFrom == null || _customTo == null) {
+      return const AsyncValue.data(ReportData.empty);
+    }
+    return ref.watch(customReportDataProvider((_customFrom!, _customTo!)));
+  }
+
+  Future<void> _pickCustomRange() async {
+    final now = DateTime.now();
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: now,
+      initialDateRange: _customFrom != null && _customTo != null
+          ? DateTimeRange(
+              start: _customFrom!,
+              end: _customTo!.subtract(const Duration(days: 1)))
+          : DateTimeRange(
+              start: DateTime(now.year, now.month, now.day),
+              end: DateTime(now.year, now.month, now.day)),
+      locale: const Locale('tr', 'TR'),
+      helpText: 'Tarih Aralığı Seçin',
+      cancelText: 'İptal',
+      confirmText: 'Tamam',
+    );
+    if (picked != null) {
+      setState(() {
+        _period = null;
+        _customFrom = picked.start;
+        // +1 day so the end date is inclusive in the DB query
+        _customTo = picked.end.add(const Duration(days: 1));
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final dataAsync = ref.watch(reportDataProvider(_period));
-    final isTablet = MediaQuery.of(context).size.width >= 600;
+    final dataAsync = _dataAsync;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Raporlar'),
         actions: [
-          // Shortcut to tariff history
           IconButton(
             icon: const Icon(Icons.price_change_outlined),
             tooltip: 'Tarife Geçmişi',
@@ -40,33 +87,39 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           // ── Period selector ───────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-            child: isTablet
-                ? SegmentedButton<ReportPeriod>(
-                    segments: ReportPeriod.values
-                        .map((p) => ButtonSegment<ReportPeriod>(
-                              value: p,
-                              label: Text(p.label),
-                            ))
-                        .toList(),
-                    selected: {_period},
-                    onSelectionChanged: (s) =>
-                        setState(() => _period = s.first),
-                  )
-                : _PeriodButtonRow(
-                    selected: _period,
-                    onChanged: (p) => setState(() => _period = p),
-                  ),
+            child: _PeriodButtonRow(
+              selected: _period,
+              onChanged: (p) => setState(() {
+                _period = p;
+                _customFrom = null;
+                _customTo = null;
+              }),
+              onCustomTap: _pickCustomRange,
+            ),
           ),
 
           // ── Date range subtitle ───────────────────────────────
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              _period.rangeLabel,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: Colors.grey),
+            child: GestureDetector(
+              onTap: _isCustom ? _pickCustomRange : null,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _rangeLabel,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: Colors.grey),
+                  ),
+                  if (_isCustom) ...[
+                    const SizedBox(width: 4),
+                    Icon(Icons.edit_calendar,
+                        size: 14, color: Colors.grey.shade500),
+                  ],
+                ],
+              ),
             ),
           ),
 
@@ -78,7 +131,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               error: (e, _) => Center(child: Text('Hata: $e')),
               data: (data) => _ReportBody(
                 data: data,
-                period: _period,
+                showInsideNow: _period == ReportPeriod.today,
               ),
             ),
           ),
@@ -88,33 +141,42 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 }
 
-// ─── Period button row (phone) ────────────────────────────────────────────────
+// ─── Period button row ────────────────────────────────────────────────────────
 
 class _PeriodButtonRow extends StatelessWidget {
   const _PeriodButtonRow({
     required this.selected,
     required this.onChanged,
+    required this.onCustomTap,
   });
 
-  final ReportPeriod selected;
+  final ReportPeriod? selected;
   final ValueChanged<ReportPeriod> onChanged;
+  final VoidCallback onCustomTap;
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: ReportPeriod.values
-            .map((p) => Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(p.label),
-                    selected: selected == p,
-                    onSelected: (_) => onChanged(p),
-                    showCheckmark: false,
-                  ),
-                ))
-            .toList(),
+        children: [
+          ...ReportPeriod.values.map((p) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilterChip(
+                  label: Text(p.label),
+                  selected: selected == p,
+                  onSelected: (_) => onChanged(p),
+                  showCheckmark: false,
+                ),
+              )),
+          FilterChip(
+            label: const Text('Özel'),
+            selected: selected == null,
+            onSelected: (_) => onCustomTap(),
+            showCheckmark: false,
+            avatar: const Icon(Icons.date_range, size: 16),
+          ),
+        ],
       ),
     );
   }
@@ -123,10 +185,10 @@ class _PeriodButtonRow extends StatelessWidget {
 // ─── Report body ──────────────────────────────────────────────────────────────
 
 class _ReportBody extends ConsumerWidget {
-  const _ReportBody({required this.data, required this.period});
+  const _ReportBody({required this.data, required this.showInsideNow});
 
   final ReportData data;
-  final ReportPeriod period;
+  final bool showInsideNow;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -138,7 +200,7 @@ class _ReportBody extends ConsumerWidget {
         ),
 
         // ── Currently inside (today only) ───────────────────────
-        if (period == ReportPeriod.today)
+        if (showInsideNow)
           SliverToBoxAdapter(
             child: _InsideNowBanner(),
           ),

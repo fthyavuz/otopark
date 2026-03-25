@@ -66,22 +66,15 @@ class _CarTileState extends State<CarTile> {
                       ),
                       if (record.isSubscriber) ...[
                         const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade100,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            'ABONMAN',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.green.shade800,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                        _Badge('AYLIK', Colors.green),
+                      ],
+                      if (record.isDailySubscriber) ...[
+                        const SizedBox(width: 8),
+                        _Badge('GÜNLÜK', Colors.blue),
+                      ],
+                      if (record.isLargeVehicle) ...[
+                        const SizedBox(width: 8),
+                        _Badge('BÜYÜK', Colors.orange),
                       ],
                     ],
                   ),
@@ -140,5 +133,31 @@ class _CarTileState extends State<CarTile> {
     if (elapsed.inHours < 2) return Colors.green.shade700;
     if (elapsed.inHours < 4) return Colors.orange.shade700;
     return Colors.red.shade700;
+  }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge(this.label, this.color);
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          color: color.withValues(alpha: 1),
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 }

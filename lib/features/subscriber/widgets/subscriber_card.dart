@@ -25,7 +25,7 @@ class SubscriberCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Top row: plates + status badge ──────────────────
+            // ── Top row: plates + badges ──────────────────────
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -40,8 +40,15 @@ class SubscriberCard extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Status badge
-                _StatusBadge(status: item.status),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _TypeBadge(type: item.type),
+                    const SizedBox(height: 4),
+                    if (item.type == SubType.monthly)
+                      _StatusBadge(status: item.status),
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -96,16 +103,17 @@ class SubscriberCard extends ConsumerWidget {
                           horizontal: 12, vertical: 6)),
                 ),
                 const SizedBox(width: 8),
-                // Renew
-                OutlinedButton.icon(
-                  onPressed: () => _showRenewDialog(context, ref),
-                  icon: const Icon(Icons.autorenew, size: 16),
-                  label: const Text('Yenile'),
-                  style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6)),
-                ),
+                // Renew — only meaningful for monthly subscribers
+                if (item.type == SubType.monthly)
+                  OutlinedButton.icon(
+                    onPressed: () => _showRenewDialog(context, ref),
+                    icon: const Icon(Icons.autorenew, size: 16),
+                    label: const Text('Yenile'),
+                    style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6)),
+                  ),
                 const Spacer(),
                 // Delete
                 IconButton(
@@ -251,6 +259,32 @@ class _PlateBadge extends StatelessWidget {
           fontWeight: FontWeight.bold,
           letterSpacing: 1.5,
           color: Theme.of(context).colorScheme.onPrimaryContainer,
+        ),
+      ),
+    );
+  }
+}
+
+class _TypeBadge extends StatelessWidget {
+  const _TypeBadge({required this.type});
+
+  final SubType type;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDaily = type == SubType.daily;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDaily ? Colors.teal.shade100 : Colors.blue.shade100,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        isDaily ? 'GÜNLÜK' : 'AYLIK',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: isDaily ? Colors.teal.shade800 : Colors.blue.shade800,
         ),
       ),
     );

@@ -17,7 +17,18 @@ class ParkingRecords extends Table {
   TextColumn get tariffNameSnapshot => text().nullable()();
 
   RealColumn get calculatedCost => real().nullable()();
-  BoolColumn get isSubscriber => boolean().withDefault(const Constant(false))();
+
+  /// True if vehicle was a monthly subscriber at entry time.
+  BoolColumn get isSubscriber =>
+      boolean().withDefault(const Constant(false))();
+
+  /// True if vehicle was flagged as a large vehicle at entry.
+  BoolColumn get isLargeVehicle =>
+      boolean().withDefault(const Constant(false))();
+
+  /// True if vehicle was flagged as a daily subscriber at entry.
+  BoolColumn get isDailySubscriber =>
+      boolean().withDefault(const Constant(false))();
 
   /// 'inside' or 'exited'
   TextColumn get status => text().withDefault(const Constant('inside'))();

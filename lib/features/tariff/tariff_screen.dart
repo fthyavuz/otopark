@@ -11,21 +11,10 @@ class TariffScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final activeTariffAsync = ref.watch(activeTariffProvider);
     final allTariffsAsync = ref.watch(allTariffsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Tarife Yönetimi')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showTariffFormSheet(
-          context,
-          existingTariff: activeTariffAsync.value,
-          isEditing: false,
-        ),
-        icon: const Icon(Icons.add),
-        label: const Text('Yeni Tarife'),
-        tooltip: 'Mevcut tarifeyi arşivle, yeni tarife oluştur',
-      ),
+      appBar: AppBar(title: const Text('Tarife Bilgisi')),
       body: allTariffsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Hata: $e')),
@@ -43,26 +32,23 @@ class TariffScreen extends ConsumerWidget {
                       )),
               const SizedBox(height: 8),
               if (active.isEmpty)
-                Card(
+                const Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16),
                     child: Column(
                       children: [
-                        const Icon(Icons.warning_amber, color: Colors.orange, size: 40),
-                        const SizedBox(height: 8),
-                        const Text('Aktif tarife bulunamadı.'),
-                        const SizedBox(height: 8),
-                        ElevatedButton(
-                          onPressed: () =>
-                              showTariffFormSheet(context, isEditing: false),
-                          child: const Text('Tarife Oluştur'),
-                        ),
+                        Icon(Icons.warning_amber, color: Colors.orange, size: 40),
+                        SizedBox(height: 8),
+                        Text('Aktif tarife bulunamadı.'),
+                        SizedBox(height: 4),
+                        Text('Tarife eklemek için Yönetici Paneli\'ni kullanın.',
+                            style: TextStyle(color: Colors.grey, fontSize: 12)),
                       ],
                     ),
                   ),
                 )
               else
-                _ActiveTariffCard(tariff: active.first),
+                ActiveTariffCard(tariff: active.first, readOnly: true),
 
               // ── Tariff history ───────────────────────────────────
               if (history.isNotEmpty) ...[
@@ -72,7 +58,7 @@ class TariffScreen extends ConsumerWidget {
                           fontWeight: FontWeight.bold,
                         )),
                 const SizedBox(height: 8),
-                ...history.map((t) => _HistoryTariffTile(tariff: t)),
+                ...history.map((t) => HistoryTariffTile(key: ValueKey(t.id), tariff: t)),
               ],
             ],
           );
@@ -84,10 +70,11 @@ class TariffScreen extends ConsumerWidget {
 
 // ─── Active tariff card ───────────────────────────────────────────────────────
 
-class _ActiveTariffCard extends ConsumerWidget {
-  const _ActiveTariffCard({required this.tariff});
+class ActiveTariffCard extends ConsumerWidget {
+  const ActiveTariffCard({super.key, required this.tariff, this.readOnly = false});
 
   final Tariff tariff;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -123,15 +110,16 @@ class _ActiveTariffCard extends ConsumerWidget {
                           .titleMedium
                           ?.copyWith(fontWeight: FontWeight.bold)),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  tooltip: 'Düzenle',
-                  onPressed: () => showTariffFormSheet(
-                    context,
-                    existingTariff: tariff,
-                    isEditing: true,
+                if (!readOnly)
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: 'Düzenle',
+                    onPressed: () => showTariffFormSheet(
+                      context,
+                      existingTariff: tariff,
+                      isEditing: true,
+                    ),
                   ),
-                ),
               ],
             ),
             const SizedBox(height: 4),
@@ -151,16 +139,16 @@ class _ActiveTariffCard extends ConsumerWidget {
 
 // ─── History tile ─────────────────────────────────────────────────────────────
 
-class _HistoryTariffTile extends ConsumerStatefulWidget {
-  const _HistoryTariffTile({required this.tariff});
+class HistoryTariffTile extends ConsumerStatefulWidget {
+  const HistoryTariffTile({super.key, required this.tariff});
 
   final Tariff tariff;
 
   @override
-  ConsumerState<_HistoryTariffTile> createState() => _HistoryTariffTileState();
+  ConsumerState<HistoryTariffTile> createState() => _HistoryTariffTileState();
 }
 
-class _HistoryTariffTileState extends ConsumerState<_HistoryTariffTile> {
+class _HistoryTariffTileState extends ConsumerState<HistoryTariffTile> {
   bool _expanded = false;
 
   @override

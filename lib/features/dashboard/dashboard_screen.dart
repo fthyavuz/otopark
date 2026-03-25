@@ -114,14 +114,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Otopark Adını Değiştir',
-            onPressed: () => _showLotNameDialog(required: false),
-          ),
-          IconButton(
-            icon: const Icon(Icons.price_change_outlined),
-            tooltip: 'Tarife',
-            onPressed: () => context.push('/tariff'),
+            icon: const Icon(Icons.admin_panel_settings_outlined),
+            tooltip: 'Yönetici Paneli',
+            onPressed: () => context.push('/admin'),
           ),
         ],
       ),
@@ -201,14 +196,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     onTap: () => context.go('/reports'),
                   ),
                   _ActionCard(
-                    label: 'Abonmanlar',
-                    icon: Icons.card_membership,
-                    color: Colors.teal,
-                    onTap: () => context.push('/subscribers'),
+                    label: 'Kayıtlı Araçlar',
+                    icon: Icons.app_registration,
+                    color: Colors.indigo,
+                    onTap: () => context.push('/registered-vehicles'),
                   ),
                   _ActionCard(
                     label: 'Tarife',
-                    icon: Icons.price_change_outlined,
+                    icon: Icons.receipt_outlined,
                     color: Colors.brown,
                     onTap: () => context.push('/tariff'),
                   ),
@@ -255,11 +250,15 @@ class _StatCard extends StatelessWidget {
                           .textTheme
                           .bodySmall
                           ?.copyWith(color: Colors.grey)),
-                  Text(value,
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold)),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(value,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold)),
+                  ),
                 ],
               ),
             ),

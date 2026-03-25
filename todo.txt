@@ -1,0 +1,24 @@
+Otopark Yönetim Sistemi Güncelleme ve Revizyon Talepleri
+1. Panel ve Yetkilendirme Düzenlemeleri
+Tarife Yönetimi: Tarife düzenleme (Edit) yetkisi sadece Yönetici Paneli'ne ta??nmal?d?r. Ana ekranda tarifeler sadece "salt okunur" (read-only) modda görüntülenebilmelidir.
+
+Üst Bar Temizli?i: Sayfan?n üst k?sm?ndaki navigasyon çubu?unda sadece "Yönetici Paneli" butonu yer almal?d?r. Tarife bilgisi zaten ana ekranda mevcut oldu?u için yukar?dan kald?r?lmal?d?r.
+
+Otopark Ad?: Otopark isminin de?i?tirilmesi i?lemi güvenlik gerekçesiyle sadece Yönetici Paneli üzerinden yap?labilmelidir.
+
+2. Araç Kay?t ve Filtreleme Fonksiyonlar?
+Ön Kay?t Ekran?: Araçlar?n otoparka fiziksel giri?inden ba??ms?z olarak, sadece sisteme kaydedilebilece?i bir "Araç Kay?t Ekran?" olu?turulmal?d?r.
+
+Ak?ll? Filtreleme: Giri? esnas?nda plaka bilgisi girilirken, kay?tl? araçlar aras?ndan otomatik tamamlama veya h?zl? filtreleme yap?larak i?lem h?z? art?r?lmal?d?r.
+
+Görünüm Özellikleri: "?çerideki Araçlar" listesinde arac?n boyutu (Büyük/Normal) ve abonelik türü (Günlük/Ayl?k vb.) net bir ?ekilde gösterilmelidir.
+
+3. Tarife ve Hesaplama Güncellemeleri
+Fiyatland?rma Mant??? (Bug Fix): "Büyük Araç" ve "Günlük Abonelik" seçildi?inde, baz fiyat olan 150 birim üzerine %50 ekleme (Surprise/Ek Ücret) yap?lmas? gerekiyor. Mevcut durumda bu hesaplama çal??m?yor, düzeltilmeli.
+
+Yeni Abonelik Türü: Tarife alan?na, mevcut ayl?k aboneli?in üzerine gelecek ?ekilde "Günlük Abonmanl?k" seçene?i eklenmelidir. Fiyat? 150 CHF olarak belirlenmelidir.
+
+Para Birimi Sembolü: Ana sayfadaki tarife butonunda/simgesinde bulunan dolar i?areti kald?r?lmal?, yerine yerel simge (?) veya genel bir fiyat ikonu kullan?lmal?d?r.
+
+4. Arayüz (UI) ve Görsel ?yile?tirmeler
+Gelir Göstergesi Tasar?m?: Ana sayfadaki "Bugünkü Gelir" alan?, yüksek haneli rakamlarda (en az 6 hane) alt sat?ra kayma yapmaktad?r. Rakamlar?n tek sat?ra s??mas? için font boyutu dinamik olarak küçültülmeli veya alan geni?letilmelidir

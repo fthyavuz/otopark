@@ -8,7 +8,9 @@
       "Bash(dart run:*)",
       "Bash(flutter analyze:*)",
       "Bash(flutter build:*)",
-      "Bash(flutter clean:*)"
+      "Bash(flutter clean:*)",
+      "Bash(dir:*)",
+      "Bash(python3:*)"
     ]
   }
 }

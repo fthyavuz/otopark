@@ -18,56 +18,111 @@ class CostCalculationResult {
   final double cost;
   final String description;
   final int elapsedMinutes;
+
+  /// True for monthly subscribers (exit is free).
   final bool isSubscriber;
+
+  /// True for daily subscribers (pay once per day).
+  final bool isDailySubscriber;
+
+  /// True if vehicle was large (50 % surcharge applied).
+  final bool isLargeVehicle;
 
   const CostCalculationResult({
     required this.cost,
     required this.description,
     required this.elapsedMinutes,
     required this.isSubscriber,
+    this.isDailySubscriber = false,
+    this.isLargeVehicle = false,
   });
 }
 
 class CostCalculator {
   CostCalculator._();
 
-  /// Calculates parking cost based on elapsed time and active tariff.
-  /// If [isSubscriber] is true, cost is always 0.
+  /// Calculates parking cost.
+  ///
+  /// Priority order:
+  ///   1. Monthly subscriber → free
+  ///   2. Daily subscriber   → dailyFee once per day, then free
+  ///   3. Large vehicle      → normal cost × 1.5
+  ///   4. Normal             → bracket-based tariff
   static CostCalculationResult calculate({
     required DateTime entryTime,
     required DateTime exitTime,
     required Tariff tariff,
-    bool isSubscriber = false,
+    bool isMonthlySubscriber = false,
+    bool isDailySubscriber = false,
+    double dailyFee = 150.0,
+    bool alreadyPaidDailyFeeToday = false,
+    bool isLargeVehicle = false,
   }) {
     final elapsedMinutes = exitTime.difference(entryTime).inMinutes;
 
-    if (isSubscriber) {
+    // 1. Monthly subscriber — always free
+    if (isMonthlySubscriber) {
       return CostCalculationResult(
         cost: 0,
-        description: 'Abonman',
+        description: 'Aylık Abonman',
         elapsedMinutes: elapsedMinutes,
         isSubscriber: true,
       );
     }
 
-    final brackets = _parseBrackets(tariff.bracketsJson);
-
-    // Find the matching bracket (sorted ascending by upToMinutes).
-    for (final bracket in brackets) {
-      if (elapsedMinutes <= bracket.upToMinutes) {
+    // 2. Daily subscriber
+    if (isDailySubscriber) {
+      if (alreadyPaidDailyFeeToday) {
         return CostCalculationResult(
-          cost: bracket.price,
-          description: _formatDuration(elapsedMinutes),
+          cost: 0,
+          description: 'Günlük Abone (bugün ödendi)',
           elapsedMinutes: elapsedMinutes,
           isSubscriber: false,
+          isDailySubscriber: true,
+          isLargeVehicle: isLargeVehicle,
         );
+      }
+      final fee = isLargeVehicle ? dailyFee * 1.5 : dailyFee;
+      final desc = isLargeVehicle
+          ? 'Günlük Abonman – Büyük Araç (+%50)'
+          : 'Günlük Abonman';
+      return CostCalculationResult(
+        cost: fee,
+        description: desc,
+        elapsedMinutes: elapsedMinutes,
+        isSubscriber: false,
+        isDailySubscriber: true,
+        isLargeVehicle: isLargeVehicle,
+      );
+    }
+
+    // 3 & 4. Normal bracket calculation (large vehicle multiplier applied after)
+    final brackets = _parseBrackets(tariff.bracketsJson);
+    double baseCost = tariff.fullDayPrice;
+    String baseDescription =
+        'Günlük Tarife (${_formatDuration(elapsedMinutes)})';
+
+    for (final bracket in brackets) {
+      if (elapsedMinutes <= bracket.upToMinutes) {
+        baseCost = bracket.price;
+        baseDescription = _formatDuration(elapsedMinutes);
+        break;
       }
     }
 
-    // Exceeds all brackets → full day price.
+    if (isLargeVehicle) {
+      return CostCalculationResult(
+        cost: baseCost * 1.5,
+        description: 'Büyük Araç – $baseDescription (+%50)',
+        elapsedMinutes: elapsedMinutes,
+        isSubscriber: false,
+        isLargeVehicle: true,
+      );
+    }
+
     return CostCalculationResult(
-      cost: tariff.fullDayPrice,
-      description: 'Günlük Tarife (${_formatDuration(elapsedMinutes)})',
+      cost: baseCost,
+      description: baseDescription,
       elapsedMinutes: elapsedMinutes,
       isSubscriber: false,
     );
