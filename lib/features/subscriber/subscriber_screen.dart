@@ -1,19 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'subscriber_dialogs.dart';
 import 'subscriber_models.dart';
 import 'subscriber_providers.dart';
 import 'widgets/subscriber_card.dart';
 import 'widgets/subscriber_form_sheet.dart';
 
-class SubscriberScreen extends ConsumerWidget {
+class SubscriberScreen extends ConsumerStatefulWidget {
   const SubscriberScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SubscriberScreen> createState() => _SubscriberScreenState();
+}
+
+class _SubscriberScreenState extends ConsumerState<SubscriberScreen> {
+  bool _dialogsScheduled = false;
+  // Track which subscriber IDs had renewal reminder shown this session
+  final Set<int> _renewalShownFor = {};
+
+  @override
+  Widget build(BuildContext context) {
     final subscribersAsync = ref.watch(allSubscribersProvider);
     final platesAsync = ref.watch(allSubscriberPlatesProvider);
     final isTablet = MediaQuery.of(context).size.width >= 600;
+
+    // Schedule pending dialogs once when both streams have data
+    final subs = subscribersAsync.value;
+    final plates = platesAsync.value;
+    if (!_dialogsScheduled && subs != null && plates != null) {
+      _dialogsScheduled = true;
+      final platesMap = <int, List<dynamic>>{};
+      for (final p in plates) {
+        platesMap.putIfAbsent(p.subscriberId, () => []).add(p);
+      }
+      final items = subs
+          .map((s) => SubscriberWithPlates(
+                subscriber: s,
+                plates: (platesMap[s.id] ?? []).cast(),
+              ))
+          .toList();
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _showPendingDialogs(items));
+    }
 
     return DefaultTabController(
       length: 2,
@@ -45,7 +74,9 @@ class SubscriberScreen extends ConsumerWidget {
 
                 final platesMap = <int, List<dynamic>>{};
                 for (final p in allPlates) {
-                  platesMap.putIfAbsent(p.subscriberId, () => []).add(p);
+                  platesMap
+                      .putIfAbsent(p.subscriberId, () => [])
+                      .add(p);
                 }
 
                 final items = subs
@@ -80,6 +111,35 @@ class SubscriberScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _showPendingDialogs(List<SubscriberWithPlates> items) async {
+    if (!mounted) return;
+
+    final monthly = items
+        .where((i) => i.type == SubType.monthly && i.subscriber.isActive)
+        .toList();
+
+    // ── Payment reminder (max one per screen open) ────────────────────────
+    for (final item in monthly) {
+      if (!mounted) return;
+      if (item.shouldShowPaymentReminder) {
+        await showSubscriberPaymentDialog(context, ref, item);
+        break;
+      }
+    }
+
+    // ── Renewal reminder (max one per session, only when fee is not due) ──
+    for (final item in monthly) {
+      if (!mounted) return;
+      if (item.isNearingExpiry &&
+          !item.isFeeDue &&
+          !_renewalShownFor.contains(item.subscriber.id)) {
+        _renewalShownFor.add(item.subscriber.id);
+        await showRenewalReminderDialog(context, ref, item);
+        break;
+      }
+    }
   }
 }
 

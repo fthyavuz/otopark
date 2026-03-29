@@ -7,11 +7,13 @@ class PaymentData {
   final Tariff tariff;
   final CostCalculationResult costResult;
   final DateTime exitTime;
+  final CleaningRecord? cleaningRecord; // null if no cleaning done during this visit
 
   const PaymentData({
     required this.record,
     required this.tariff,
     required this.costResult,
     required this.exitTime,
+    this.cleaningRecord,
   });
 }

@@ -14,6 +14,12 @@ class Subscribers extends Table {
 
   /// Fee charged per day for daily subscribers (null = use default 150).
   RealColumn get dailyFee => real().nullable()();
+
+  /// When the monthly fee was last paid until (set to endDate at payment).
+  DateTimeColumn get feePaidUntil => dateTime().nullable()();
+
+  /// If set and in the future, don't prompt for payment.
+  DateTimeColumn get paymentSnoozedUntil => dateTime().nullable()();
 }
 
 class SubscriberPlates extends Table {

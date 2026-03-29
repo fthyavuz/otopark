@@ -29,6 +29,7 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
   ParkingRecord? _foundRecord;
   Tariff? _foundTariff;
   CostCalculationResult? _costResult;
+  CleaningRecord? _cleaningRecord;
   bool _loadingCost = false;
   String? _notFoundMsg;
 
@@ -57,6 +58,7 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
         _foundRecord = null;
         _foundTariff = null;
         _costResult = null;
+        _cleaningRecord = null;
         _notFoundMsg = null;
       });
       return;
@@ -133,6 +135,9 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
       _foundTariff = tariff;
       _costResult = cost;
     });
+
+    final cleaning = await db.getTodayCleaningForParkingCar(plate);
+    if (mounted) setState(() => _cleaningRecord = cleaning);
   }
 
   // ─── Navigate to payment screen ───────────────────────────────────────────
@@ -149,6 +154,7 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
         tariff: _foundTariff!,
         costResult: _costResult!,
         exitTime: DateTime.now(),
+        cleaningRecord: _cleaningRecord,
       ),
     );
   }
@@ -195,6 +201,7 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
                                 _foundRecord = null;
                                 _foundTariff = null;
                                 _costResult = null;
+                                _cleaningRecord = null;
                                 _notFoundMsg = null;
                               });
                             },
@@ -324,6 +331,7 @@ class _ExitScreenState extends ConsumerState<ExitScreen> {
                       tariff: _foundTariff!,
                       costResult: _costResult!,
                       onShowPayment: _goToPayment,
+                      cleaningRecord: _cleaningRecord,
                     ),
                   ),
                 ),
@@ -369,12 +377,14 @@ class _CostSummaryCard extends StatelessWidget {
     required this.tariff,
     required this.costResult,
     required this.onShowPayment,
+    this.cleaningRecord,
   });
 
   final ParkingRecord record;
   final Tariff tariff;
   final CostCalculationResult costResult;
   final VoidCallback onShowPayment;
+  final CleaningRecord? cleaningRecord;
 
   @override
   Widget build(BuildContext context) {
@@ -439,6 +449,17 @@ class _CostSummaryCard extends StatelessWidget {
                   label: 'Uygulanan',
                   value: costResult.description,
                 ),
+                if (cleaningRecord != null) ...[
+                  _DetailRow(
+                    label: 'Temizlik (ödendi)',
+                    value: CurrencyFormatter.format(cleaningRecord!.finalCost),
+                    valueStyle: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.teal.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                ],
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

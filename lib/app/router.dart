@@ -15,6 +15,11 @@ import '../features/entry/subscription_payment_screen.dart';
 import '../features/registered_vehicles/registered_vehicles_screen.dart';
 import '../features/entry/entry_models.dart';
 import '../shared/widgets/app_nav_bar.dart';
+import '../features/cleaning/cleaning_entry_screen.dart';
+import '../features/cleaning/cleaning_service_screen.dart';
+import '../features/cleaning/cleaning_payment_screen.dart';
+import '../features/cleaning/cleaning_list_screen.dart';
+import '../features/cleaning/cleaning_models.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -87,6 +92,28 @@ final appRouter = GoRouter(
       name: 'subscription_payment',
       builder: (context, state) =>
           SubscriptionPaymentScreen(data: state.extra as SubscriptionPaymentData),
+    ),
+    GoRoute(
+      path: '/cleaning',
+      name: 'cleaning',
+      builder: (context, state) => const CleaningEntryScreen(),
+    ),
+    GoRoute(
+      path: '/cleaning-service',
+      name: 'cleaning_service',
+      builder: (context, state) =>
+          CleaningServiceScreen(data: state.extra as CleaningEntryData),
+    ),
+    GoRoute(
+      path: '/cleaning-payment',
+      name: 'cleaning_payment',
+      builder: (context, state) =>
+          CleaningPaymentScreen(data: state.extra as CleaningPaymentData),
+    ),
+    GoRoute(
+      path: '/cleaning-list',
+      name: 'cleaning_list',
+      builder: (context, state) => const CleaningListScreen(),
     ),
   ],
   errorBuilder: (context, state) => Scaffold(

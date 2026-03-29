@@ -264,6 +264,15 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                           Duration(minutes: cost.elapsedMinutes)),
                       fontSize: detailFontSize,
                     ),
+                    if (d.cleaningRecord != null) ...[
+                      const SizedBox(height: 6),
+                      _PaymentDetailRow(
+                        label: 'Temizlik (ödendi)',
+                        value: CurrencyFormatter.format(d.cleaningRecord!.finalCost),
+                        fontSize: detailFontSize,
+                        valueColor: Colors.teal.shade300,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -352,11 +361,13 @@ class _PaymentDetailRow extends StatelessWidget {
     required this.label,
     required this.value,
     required this.fontSize,
+    this.valueColor,
   });
 
   final String label;
   final String value;
   final double fontSize;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -368,7 +379,7 @@ class _PaymentDetailRow extends StatelessWidget {
         Text(value,
             style: TextStyle(
                 fontSize: fontSize,
-                color: Colors.white,
+                color: valueColor ?? Colors.white,
                 fontWeight: FontWeight.w600)),
       ],
     );

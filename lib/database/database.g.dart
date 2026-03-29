@@ -1430,6 +1430,28 @@ class $SubscribersTable extends Subscribers
     type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _feePaidUntilMeta = const VerificationMeta(
+    'feePaidUntil',
+  );
+  @override
+  late final GeneratedColumn<DateTime> feePaidUntil = GeneratedColumn<DateTime>(
+    'fee_paid_until',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _paymentSnoozedUntilMeta =
+      const VerificationMeta('paymentSnoozedUntil');
+  @override
+  late final GeneratedColumn<DateTime> paymentSnoozedUntil =
+      GeneratedColumn<DateTime>(
+        'payment_snoozed_until',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1440,6 +1462,8 @@ class $SubscribersTable extends Subscribers
     isActive,
     subscriberType,
     dailyFee,
+    feePaidUntil,
+    paymentSnoozedUntil,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1507,6 +1531,24 @@ class $SubscribersTable extends Subscribers
         dailyFee.isAcceptableOrUnknown(data['daily_fee']!, _dailyFeeMeta),
       );
     }
+    if (data.containsKey('fee_paid_until')) {
+      context.handle(
+        _feePaidUntilMeta,
+        feePaidUntil.isAcceptableOrUnknown(
+          data['fee_paid_until']!,
+          _feePaidUntilMeta,
+        ),
+      );
+    }
+    if (data.containsKey('payment_snoozed_until')) {
+      context.handle(
+        _paymentSnoozedUntilMeta,
+        paymentSnoozedUntil.isAcceptableOrUnknown(
+          data['payment_snoozed_until']!,
+          _paymentSnoozedUntilMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1548,6 +1590,14 @@ class $SubscribersTable extends Subscribers
         DriftSqlType.double,
         data['${effectivePrefix}daily_fee'],
       ),
+      feePaidUntil: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}fee_paid_until'],
+      ),
+      paymentSnoozedUntil: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}payment_snoozed_until'],
+      ),
     );
   }
 
@@ -1570,6 +1620,12 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
 
   /// Fee charged per day for daily subscribers (null = use default 150).
   final double? dailyFee;
+
+  /// When the monthly fee was last paid until (set to endDate at payment).
+  final DateTime? feePaidUntil;
+
+  /// If set and in the future, don't prompt for payment.
+  final DateTime? paymentSnoozedUntil;
   const Subscriber({
     required this.id,
     this.notes,
@@ -1579,6 +1635,8 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
     required this.isActive,
     required this.subscriberType,
     this.dailyFee,
+    this.feePaidUntil,
+    this.paymentSnoozedUntil,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1594,6 +1652,12 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
     map['subscriber_type'] = Variable<String>(subscriberType);
     if (!nullToAbsent || dailyFee != null) {
       map['daily_fee'] = Variable<double>(dailyFee);
+    }
+    if (!nullToAbsent || feePaidUntil != null) {
+      map['fee_paid_until'] = Variable<DateTime>(feePaidUntil);
+    }
+    if (!nullToAbsent || paymentSnoozedUntil != null) {
+      map['payment_snoozed_until'] = Variable<DateTime>(paymentSnoozedUntil);
     }
     return map;
   }
@@ -1612,6 +1676,12 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
       dailyFee: dailyFee == null && nullToAbsent
           ? const Value.absent()
           : Value(dailyFee),
+      feePaidUntil: feePaidUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(feePaidUntil),
+      paymentSnoozedUntil: paymentSnoozedUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(paymentSnoozedUntil),
     );
   }
 
@@ -1629,6 +1699,10 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
       isActive: serializer.fromJson<bool>(json['isActive']),
       subscriberType: serializer.fromJson<String>(json['subscriberType']),
       dailyFee: serializer.fromJson<double?>(json['dailyFee']),
+      feePaidUntil: serializer.fromJson<DateTime?>(json['feePaidUntil']),
+      paymentSnoozedUntil: serializer.fromJson<DateTime?>(
+        json['paymentSnoozedUntil'],
+      ),
     );
   }
   @override
@@ -1643,6 +1717,8 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
       'isActive': serializer.toJson<bool>(isActive),
       'subscriberType': serializer.toJson<String>(subscriberType),
       'dailyFee': serializer.toJson<double?>(dailyFee),
+      'feePaidUntil': serializer.toJson<DateTime?>(feePaidUntil),
+      'paymentSnoozedUntil': serializer.toJson<DateTime?>(paymentSnoozedUntil),
     };
   }
 
@@ -1655,6 +1731,8 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
     bool? isActive,
     String? subscriberType,
     Value<double?> dailyFee = const Value.absent(),
+    Value<DateTime?> feePaidUntil = const Value.absent(),
+    Value<DateTime?> paymentSnoozedUntil = const Value.absent(),
   }) => Subscriber(
     id: id ?? this.id,
     notes: notes.present ? notes.value : this.notes,
@@ -1664,6 +1742,10 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
     isActive: isActive ?? this.isActive,
     subscriberType: subscriberType ?? this.subscriberType,
     dailyFee: dailyFee.present ? dailyFee.value : this.dailyFee,
+    feePaidUntil: feePaidUntil.present ? feePaidUntil.value : this.feePaidUntil,
+    paymentSnoozedUntil: paymentSnoozedUntil.present
+        ? paymentSnoozedUntil.value
+        : this.paymentSnoozedUntil,
   );
   Subscriber copyWithCompanion(SubscribersCompanion data) {
     return Subscriber(
@@ -1679,6 +1761,12 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
           ? data.subscriberType.value
           : this.subscriberType,
       dailyFee: data.dailyFee.present ? data.dailyFee.value : this.dailyFee,
+      feePaidUntil: data.feePaidUntil.present
+          ? data.feePaidUntil.value
+          : this.feePaidUntil,
+      paymentSnoozedUntil: data.paymentSnoozedUntil.present
+          ? data.paymentSnoozedUntil.value
+          : this.paymentSnoozedUntil,
     );
   }
 
@@ -1692,7 +1780,9 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
           ..write('monthlyFee: $monthlyFee, ')
           ..write('isActive: $isActive, ')
           ..write('subscriberType: $subscriberType, ')
-          ..write('dailyFee: $dailyFee')
+          ..write('dailyFee: $dailyFee, ')
+          ..write('feePaidUntil: $feePaidUntil, ')
+          ..write('paymentSnoozedUntil: $paymentSnoozedUntil')
           ..write(')'))
         .toString();
   }
@@ -1707,6 +1797,8 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
     isActive,
     subscriberType,
     dailyFee,
+    feePaidUntil,
+    paymentSnoozedUntil,
   );
   @override
   bool operator ==(Object other) =>
@@ -1719,7 +1811,9 @@ class Subscriber extends DataClass implements Insertable<Subscriber> {
           other.monthlyFee == this.monthlyFee &&
           other.isActive == this.isActive &&
           other.subscriberType == this.subscriberType &&
-          other.dailyFee == this.dailyFee);
+          other.dailyFee == this.dailyFee &&
+          other.feePaidUntil == this.feePaidUntil &&
+          other.paymentSnoozedUntil == this.paymentSnoozedUntil);
 }
 
 class SubscribersCompanion extends UpdateCompanion<Subscriber> {
@@ -1731,6 +1825,8 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
   final Value<bool> isActive;
   final Value<String> subscriberType;
   final Value<double?> dailyFee;
+  final Value<DateTime?> feePaidUntil;
+  final Value<DateTime?> paymentSnoozedUntil;
   const SubscribersCompanion({
     this.id = const Value.absent(),
     this.notes = const Value.absent(),
@@ -1740,6 +1836,8 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
     this.isActive = const Value.absent(),
     this.subscriberType = const Value.absent(),
     this.dailyFee = const Value.absent(),
+    this.feePaidUntil = const Value.absent(),
+    this.paymentSnoozedUntil = const Value.absent(),
   });
   SubscribersCompanion.insert({
     this.id = const Value.absent(),
@@ -1750,6 +1848,8 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
     this.isActive = const Value.absent(),
     this.subscriberType = const Value.absent(),
     this.dailyFee = const Value.absent(),
+    this.feePaidUntil = const Value.absent(),
+    this.paymentSnoozedUntil = const Value.absent(),
   }) : startDate = Value(startDate),
        endDate = Value(endDate),
        monthlyFee = Value(monthlyFee);
@@ -1762,6 +1862,8 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
     Expression<bool>? isActive,
     Expression<String>? subscriberType,
     Expression<double>? dailyFee,
+    Expression<DateTime>? feePaidUntil,
+    Expression<DateTime>? paymentSnoozedUntil,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1772,6 +1874,9 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
       if (isActive != null) 'is_active': isActive,
       if (subscriberType != null) 'subscriber_type': subscriberType,
       if (dailyFee != null) 'daily_fee': dailyFee,
+      if (feePaidUntil != null) 'fee_paid_until': feePaidUntil,
+      if (paymentSnoozedUntil != null)
+        'payment_snoozed_until': paymentSnoozedUntil,
     });
   }
 
@@ -1784,6 +1889,8 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
     Value<bool>? isActive,
     Value<String>? subscriberType,
     Value<double?>? dailyFee,
+    Value<DateTime?>? feePaidUntil,
+    Value<DateTime?>? paymentSnoozedUntil,
   }) {
     return SubscribersCompanion(
       id: id ?? this.id,
@@ -1794,6 +1901,8 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
       isActive: isActive ?? this.isActive,
       subscriberType: subscriberType ?? this.subscriberType,
       dailyFee: dailyFee ?? this.dailyFee,
+      feePaidUntil: feePaidUntil ?? this.feePaidUntil,
+      paymentSnoozedUntil: paymentSnoozedUntil ?? this.paymentSnoozedUntil,
     );
   }
 
@@ -1824,6 +1933,14 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
     if (dailyFee.present) {
       map['daily_fee'] = Variable<double>(dailyFee.value);
     }
+    if (feePaidUntil.present) {
+      map['fee_paid_until'] = Variable<DateTime>(feePaidUntil.value);
+    }
+    if (paymentSnoozedUntil.present) {
+      map['payment_snoozed_until'] = Variable<DateTime>(
+        paymentSnoozedUntil.value,
+      );
+    }
     return map;
   }
 
@@ -1837,7 +1954,9 @@ class SubscribersCompanion extends UpdateCompanion<Subscriber> {
           ..write('monthlyFee: $monthlyFee, ')
           ..write('isActive: $isActive, ')
           ..write('subscriberType: $subscriberType, ')
-          ..write('dailyFee: $dailyFee')
+          ..write('dailyFee: $dailyFee, ')
+          ..write('feePaidUntil: $feePaidUntil, ')
+          ..write('paymentSnoozedUntil: $paymentSnoozedUntil')
           ..write(')'))
         .toString();
   }
@@ -2956,6 +3075,735 @@ class RegisteredVehiclesCompanion extends UpdateCompanion<RegisteredVehicle> {
   }
 }
 
+class $CleaningRecordsTable extends CleaningRecords
+    with TableInfo<$CleaningRecordsTable, CleaningRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CleaningRecordsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _plateMeta = const VerificationMeta('plate');
+  @override
+  late final GeneratedColumn<String> plate = GeneratedColumn<String>(
+    'plate',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 2,
+      maxTextLength: 20,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _serviceTypeMeta = const VerificationMeta(
+    'serviceType',
+  );
+  @override
+  late final GeneratedColumn<String> serviceType = GeneratedColumn<String>(
+    'service_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _baseCostMeta = const VerificationMeta(
+    'baseCost',
+  );
+  @override
+  late final GeneratedColumn<double> baseCost = GeneratedColumn<double>(
+    'base_cost',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _finalCostMeta = const VerificationMeta(
+    'finalCost',
+  );
+  @override
+  late final GeneratedColumn<double> finalCost = GeneratedColumn<double>(
+    'final_cost',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _discountPercentMeta = const VerificationMeta(
+    'discountPercent',
+  );
+  @override
+  late final GeneratedColumn<double> discountPercent = GeneratedColumn<double>(
+    'discount_percent',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  static const VerificationMeta _isLargeVehicleMeta = const VerificationMeta(
+    'isLargeVehicle',
+  );
+  @override
+  late final GeneratedColumn<bool> isLargeVehicle = GeneratedColumn<bool>(
+    'is_large_vehicle',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_large_vehicle" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _wasParkingCarMeta = const VerificationMeta(
+    'wasParkingCar',
+  );
+  @override
+  late final GeneratedColumn<bool> wasParkingCar = GeneratedColumn<bool>(
+    'was_parking_car',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("was_parking_car" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('cleaned'),
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _completedAtMeta = const VerificationMeta(
+    'completedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> completedAt = GeneratedColumn<DateTime>(
+    'completed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    plate,
+    serviceType,
+    baseCost,
+    finalCost,
+    discountPercent,
+    isLargeVehicle,
+    wasParkingCar,
+    status,
+    notes,
+    createdAt,
+    completedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cleaning_records';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CleaningRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('plate')) {
+      context.handle(
+        _plateMeta,
+        plate.isAcceptableOrUnknown(data['plate']!, _plateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_plateMeta);
+    }
+    if (data.containsKey('service_type')) {
+      context.handle(
+        _serviceTypeMeta,
+        serviceType.isAcceptableOrUnknown(
+          data['service_type']!,
+          _serviceTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_serviceTypeMeta);
+    }
+    if (data.containsKey('base_cost')) {
+      context.handle(
+        _baseCostMeta,
+        baseCost.isAcceptableOrUnknown(data['base_cost']!, _baseCostMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_baseCostMeta);
+    }
+    if (data.containsKey('final_cost')) {
+      context.handle(
+        _finalCostMeta,
+        finalCost.isAcceptableOrUnknown(data['final_cost']!, _finalCostMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_finalCostMeta);
+    }
+    if (data.containsKey('discount_percent')) {
+      context.handle(
+        _discountPercentMeta,
+        discountPercent.isAcceptableOrUnknown(
+          data['discount_percent']!,
+          _discountPercentMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_large_vehicle')) {
+      context.handle(
+        _isLargeVehicleMeta,
+        isLargeVehicle.isAcceptableOrUnknown(
+          data['is_large_vehicle']!,
+          _isLargeVehicleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('was_parking_car')) {
+      context.handle(
+        _wasParkingCarMeta,
+        wasParkingCar.isAcceptableOrUnknown(
+          data['was_parking_car']!,
+          _wasParkingCarMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('completed_at')) {
+      context.handle(
+        _completedAtMeta,
+        completedAt.isAcceptableOrUnknown(
+          data['completed_at']!,
+          _completedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CleaningRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CleaningRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      plate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plate'],
+      )!,
+      serviceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}service_type'],
+      )!,
+      baseCost: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}base_cost'],
+      )!,
+      finalCost: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}final_cost'],
+      )!,
+      discountPercent: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}discount_percent'],
+      )!,
+      isLargeVehicle: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_large_vehicle'],
+      )!,
+      wasParkingCar: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}was_parking_car'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      completedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}completed_at'],
+      ),
+    );
+  }
+
+  @override
+  $CleaningRecordsTable createAlias(String alias) {
+    return $CleaningRecordsTable(attachedDatabase, alias);
+  }
+}
+
+class CleaningRecord extends DataClass implements Insertable<CleaningRecord> {
+  final int id;
+  final String plate;
+
+  /// 'interior' | 'exterior' | 'interior_exterior' | 'full'
+  final String serviceType;
+
+  /// Base price before surcharges/discounts (from settings at time of service)
+  final double baseCost;
+
+  /// Final amount actually charged
+  final double finalCost;
+
+  /// Discount percentage applied (0.0 = no discount)
+  final double discountPercent;
+  final bool isLargeVehicle;
+
+  /// True if the car was inside the parking lot at time of cleaning
+  final bool wasParkingCar;
+
+  /// 'cleaning' = in progress / not yet paid | 'cleaned' = completed and paid
+  final String status;
+  final String? notes;
+  final DateTime createdAt;
+  final DateTime? completedAt;
+  const CleaningRecord({
+    required this.id,
+    required this.plate,
+    required this.serviceType,
+    required this.baseCost,
+    required this.finalCost,
+    required this.discountPercent,
+    required this.isLargeVehicle,
+    required this.wasParkingCar,
+    required this.status,
+    this.notes,
+    required this.createdAt,
+    this.completedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['plate'] = Variable<String>(plate);
+    map['service_type'] = Variable<String>(serviceType);
+    map['base_cost'] = Variable<double>(baseCost);
+    map['final_cost'] = Variable<double>(finalCost);
+    map['discount_percent'] = Variable<double>(discountPercent);
+    map['is_large_vehicle'] = Variable<bool>(isLargeVehicle);
+    map['was_parking_car'] = Variable<bool>(wasParkingCar);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || completedAt != null) {
+      map['completed_at'] = Variable<DateTime>(completedAt);
+    }
+    return map;
+  }
+
+  CleaningRecordsCompanion toCompanion(bool nullToAbsent) {
+    return CleaningRecordsCompanion(
+      id: Value(id),
+      plate: Value(plate),
+      serviceType: Value(serviceType),
+      baseCost: Value(baseCost),
+      finalCost: Value(finalCost),
+      discountPercent: Value(discountPercent),
+      isLargeVehicle: Value(isLargeVehicle),
+      wasParkingCar: Value(wasParkingCar),
+      status: Value(status),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      createdAt: Value(createdAt),
+      completedAt: completedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedAt),
+    );
+  }
+
+  factory CleaningRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CleaningRecord(
+      id: serializer.fromJson<int>(json['id']),
+      plate: serializer.fromJson<String>(json['plate']),
+      serviceType: serializer.fromJson<String>(json['serviceType']),
+      baseCost: serializer.fromJson<double>(json['baseCost']),
+      finalCost: serializer.fromJson<double>(json['finalCost']),
+      discountPercent: serializer.fromJson<double>(json['discountPercent']),
+      isLargeVehicle: serializer.fromJson<bool>(json['isLargeVehicle']),
+      wasParkingCar: serializer.fromJson<bool>(json['wasParkingCar']),
+      status: serializer.fromJson<String>(json['status']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'plate': serializer.toJson<String>(plate),
+      'serviceType': serializer.toJson<String>(serviceType),
+      'baseCost': serializer.toJson<double>(baseCost),
+      'finalCost': serializer.toJson<double>(finalCost),
+      'discountPercent': serializer.toJson<double>(discountPercent),
+      'isLargeVehicle': serializer.toJson<bool>(isLargeVehicle),
+      'wasParkingCar': serializer.toJson<bool>(wasParkingCar),
+      'status': serializer.toJson<String>(status),
+      'notes': serializer.toJson<String?>(notes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'completedAt': serializer.toJson<DateTime?>(completedAt),
+    };
+  }
+
+  CleaningRecord copyWith({
+    int? id,
+    String? plate,
+    String? serviceType,
+    double? baseCost,
+    double? finalCost,
+    double? discountPercent,
+    bool? isLargeVehicle,
+    bool? wasParkingCar,
+    String? status,
+    Value<String?> notes = const Value.absent(),
+    DateTime? createdAt,
+    Value<DateTime?> completedAt = const Value.absent(),
+  }) => CleaningRecord(
+    id: id ?? this.id,
+    plate: plate ?? this.plate,
+    serviceType: serviceType ?? this.serviceType,
+    baseCost: baseCost ?? this.baseCost,
+    finalCost: finalCost ?? this.finalCost,
+    discountPercent: discountPercent ?? this.discountPercent,
+    isLargeVehicle: isLargeVehicle ?? this.isLargeVehicle,
+    wasParkingCar: wasParkingCar ?? this.wasParkingCar,
+    status: status ?? this.status,
+    notes: notes.present ? notes.value : this.notes,
+    createdAt: createdAt ?? this.createdAt,
+    completedAt: completedAt.present ? completedAt.value : this.completedAt,
+  );
+  CleaningRecord copyWithCompanion(CleaningRecordsCompanion data) {
+    return CleaningRecord(
+      id: data.id.present ? data.id.value : this.id,
+      plate: data.plate.present ? data.plate.value : this.plate,
+      serviceType: data.serviceType.present
+          ? data.serviceType.value
+          : this.serviceType,
+      baseCost: data.baseCost.present ? data.baseCost.value : this.baseCost,
+      finalCost: data.finalCost.present ? data.finalCost.value : this.finalCost,
+      discountPercent: data.discountPercent.present
+          ? data.discountPercent.value
+          : this.discountPercent,
+      isLargeVehicle: data.isLargeVehicle.present
+          ? data.isLargeVehicle.value
+          : this.isLargeVehicle,
+      wasParkingCar: data.wasParkingCar.present
+          ? data.wasParkingCar.value
+          : this.wasParkingCar,
+      status: data.status.present ? data.status.value : this.status,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      completedAt: data.completedAt.present
+          ? data.completedAt.value
+          : this.completedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CleaningRecord(')
+          ..write('id: $id, ')
+          ..write('plate: $plate, ')
+          ..write('serviceType: $serviceType, ')
+          ..write('baseCost: $baseCost, ')
+          ..write('finalCost: $finalCost, ')
+          ..write('discountPercent: $discountPercent, ')
+          ..write('isLargeVehicle: $isLargeVehicle, ')
+          ..write('wasParkingCar: $wasParkingCar, ')
+          ..write('status: $status, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('completedAt: $completedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    plate,
+    serviceType,
+    baseCost,
+    finalCost,
+    discountPercent,
+    isLargeVehicle,
+    wasParkingCar,
+    status,
+    notes,
+    createdAt,
+    completedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CleaningRecord &&
+          other.id == this.id &&
+          other.plate == this.plate &&
+          other.serviceType == this.serviceType &&
+          other.baseCost == this.baseCost &&
+          other.finalCost == this.finalCost &&
+          other.discountPercent == this.discountPercent &&
+          other.isLargeVehicle == this.isLargeVehicle &&
+          other.wasParkingCar == this.wasParkingCar &&
+          other.status == this.status &&
+          other.notes == this.notes &&
+          other.createdAt == this.createdAt &&
+          other.completedAt == this.completedAt);
+}
+
+class CleaningRecordsCompanion extends UpdateCompanion<CleaningRecord> {
+  final Value<int> id;
+  final Value<String> plate;
+  final Value<String> serviceType;
+  final Value<double> baseCost;
+  final Value<double> finalCost;
+  final Value<double> discountPercent;
+  final Value<bool> isLargeVehicle;
+  final Value<bool> wasParkingCar;
+  final Value<String> status;
+  final Value<String?> notes;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> completedAt;
+  const CleaningRecordsCompanion({
+    this.id = const Value.absent(),
+    this.plate = const Value.absent(),
+    this.serviceType = const Value.absent(),
+    this.baseCost = const Value.absent(),
+    this.finalCost = const Value.absent(),
+    this.discountPercent = const Value.absent(),
+    this.isLargeVehicle = const Value.absent(),
+    this.wasParkingCar = const Value.absent(),
+    this.status = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.completedAt = const Value.absent(),
+  });
+  CleaningRecordsCompanion.insert({
+    this.id = const Value.absent(),
+    required String plate,
+    required String serviceType,
+    required double baseCost,
+    required double finalCost,
+    this.discountPercent = const Value.absent(),
+    this.isLargeVehicle = const Value.absent(),
+    this.wasParkingCar = const Value.absent(),
+    this.status = const Value.absent(),
+    this.notes = const Value.absent(),
+    required DateTime createdAt,
+    this.completedAt = const Value.absent(),
+  }) : plate = Value(plate),
+       serviceType = Value(serviceType),
+       baseCost = Value(baseCost),
+       finalCost = Value(finalCost),
+       createdAt = Value(createdAt);
+  static Insertable<CleaningRecord> custom({
+    Expression<int>? id,
+    Expression<String>? plate,
+    Expression<String>? serviceType,
+    Expression<double>? baseCost,
+    Expression<double>? finalCost,
+    Expression<double>? discountPercent,
+    Expression<bool>? isLargeVehicle,
+    Expression<bool>? wasParkingCar,
+    Expression<String>? status,
+    Expression<String>? notes,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? completedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (plate != null) 'plate': plate,
+      if (serviceType != null) 'service_type': serviceType,
+      if (baseCost != null) 'base_cost': baseCost,
+      if (finalCost != null) 'final_cost': finalCost,
+      if (discountPercent != null) 'discount_percent': discountPercent,
+      if (isLargeVehicle != null) 'is_large_vehicle': isLargeVehicle,
+      if (wasParkingCar != null) 'was_parking_car': wasParkingCar,
+      if (status != null) 'status': status,
+      if (notes != null) 'notes': notes,
+      if (createdAt != null) 'created_at': createdAt,
+      if (completedAt != null) 'completed_at': completedAt,
+    });
+  }
+
+  CleaningRecordsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? plate,
+    Value<String>? serviceType,
+    Value<double>? baseCost,
+    Value<double>? finalCost,
+    Value<double>? discountPercent,
+    Value<bool>? isLargeVehicle,
+    Value<bool>? wasParkingCar,
+    Value<String>? status,
+    Value<String?>? notes,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? completedAt,
+  }) {
+    return CleaningRecordsCompanion(
+      id: id ?? this.id,
+      plate: plate ?? this.plate,
+      serviceType: serviceType ?? this.serviceType,
+      baseCost: baseCost ?? this.baseCost,
+      finalCost: finalCost ?? this.finalCost,
+      discountPercent: discountPercent ?? this.discountPercent,
+      isLargeVehicle: isLargeVehicle ?? this.isLargeVehicle,
+      wasParkingCar: wasParkingCar ?? this.wasParkingCar,
+      status: status ?? this.status,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      completedAt: completedAt ?? this.completedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (plate.present) {
+      map['plate'] = Variable<String>(plate.value);
+    }
+    if (serviceType.present) {
+      map['service_type'] = Variable<String>(serviceType.value);
+    }
+    if (baseCost.present) {
+      map['base_cost'] = Variable<double>(baseCost.value);
+    }
+    if (finalCost.present) {
+      map['final_cost'] = Variable<double>(finalCost.value);
+    }
+    if (discountPercent.present) {
+      map['discount_percent'] = Variable<double>(discountPercent.value);
+    }
+    if (isLargeVehicle.present) {
+      map['is_large_vehicle'] = Variable<bool>(isLargeVehicle.value);
+    }
+    if (wasParkingCar.present) {
+      map['was_parking_car'] = Variable<bool>(wasParkingCar.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (completedAt.present) {
+      map['completed_at'] = Variable<DateTime>(completedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CleaningRecordsCompanion(')
+          ..write('id: $id, ')
+          ..write('plate: $plate, ')
+          ..write('serviceType: $serviceType, ')
+          ..write('baseCost: $baseCost, ')
+          ..write('finalCost: $finalCost, ')
+          ..write('discountPercent: $discountPercent, ')
+          ..write('isLargeVehicle: $isLargeVehicle, ')
+          ..write('wasParkingCar: $wasParkingCar, ')
+          ..write('status: $status, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('completedAt: $completedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2969,6 +3817,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $LargeVehiclePlatesTable(this);
   late final $RegisteredVehiclesTable registeredVehicles =
       $RegisteredVehiclesTable(this);
+  late final $CleaningRecordsTable cleaningRecords = $CleaningRecordsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2980,6 +3831,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     subscriberPlates,
     largeVehiclePlates,
     registeredVehicles,
+    cleaningRecords,
   ];
 }
 
@@ -3836,6 +4688,8 @@ typedef $$SubscribersTableCreateCompanionBuilder =
       Value<bool> isActive,
       Value<String> subscriberType,
       Value<double?> dailyFee,
+      Value<DateTime?> feePaidUntil,
+      Value<DateTime?> paymentSnoozedUntil,
     });
 typedef $$SubscribersTableUpdateCompanionBuilder =
     SubscribersCompanion Function({
@@ -3847,6 +4701,8 @@ typedef $$SubscribersTableUpdateCompanionBuilder =
       Value<bool> isActive,
       Value<String> subscriberType,
       Value<double?> dailyFee,
+      Value<DateTime?> feePaidUntil,
+      Value<DateTime?> paymentSnoozedUntil,
     });
 
 final class $$SubscribersTableReferences
@@ -3926,6 +4782,16 @@ class $$SubscribersTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get feePaidUntil => $composableBuilder(
+    column: $table.feePaidUntil,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get paymentSnoozedUntil => $composableBuilder(
+    column: $table.paymentSnoozedUntil,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> subscriberPlatesRefs(
     Expression<bool> Function($$SubscriberPlatesTableFilterComposer f) f,
   ) {
@@ -4000,6 +4866,16 @@ class $$SubscribersTableOrderingComposer
     column: $table.dailyFee,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get feePaidUntil => $composableBuilder(
+    column: $table.feePaidUntil,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get paymentSnoozedUntil => $composableBuilder(
+    column: $table.paymentSnoozedUntil,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SubscribersTableAnnotationComposer
@@ -4038,6 +4914,16 @@ class $$SubscribersTableAnnotationComposer
 
   GeneratedColumn<double> get dailyFee =>
       $composableBuilder(column: $table.dailyFee, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get feePaidUntil => $composableBuilder(
+    column: $table.feePaidUntil,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get paymentSnoozedUntil => $composableBuilder(
+    column: $table.paymentSnoozedUntil,
+    builder: (column) => column,
+  );
 
   Expression<T> subscriberPlatesRefs<T extends Object>(
     Expression<T> Function($$SubscriberPlatesTableAnnotationComposer a) f,
@@ -4101,6 +4987,8 @@ class $$SubscribersTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<String> subscriberType = const Value.absent(),
                 Value<double?> dailyFee = const Value.absent(),
+                Value<DateTime?> feePaidUntil = const Value.absent(),
+                Value<DateTime?> paymentSnoozedUntil = const Value.absent(),
               }) => SubscribersCompanion(
                 id: id,
                 notes: notes,
@@ -4110,6 +4998,8 @@ class $$SubscribersTableTableManager
                 isActive: isActive,
                 subscriberType: subscriberType,
                 dailyFee: dailyFee,
+                feePaidUntil: feePaidUntil,
+                paymentSnoozedUntil: paymentSnoozedUntil,
               ),
           createCompanionCallback:
               ({
@@ -4121,6 +5011,8 @@ class $$SubscribersTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<String> subscriberType = const Value.absent(),
                 Value<double?> dailyFee = const Value.absent(),
+                Value<DateTime?> feePaidUntil = const Value.absent(),
+                Value<DateTime?> paymentSnoozedUntil = const Value.absent(),
               }) => SubscribersCompanion.insert(
                 id: id,
                 notes: notes,
@@ -4130,6 +5022,8 @@ class $$SubscribersTableTableManager
                 isActive: isActive,
                 subscriberType: subscriberType,
                 dailyFee: dailyFee,
+                feePaidUntil: feePaidUntil,
+                paymentSnoozedUntil: paymentSnoozedUntil,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -4929,6 +5823,349 @@ typedef $$RegisteredVehiclesTableProcessedTableManager =
       RegisteredVehicle,
       PrefetchHooks Function()
     >;
+typedef $$CleaningRecordsTableCreateCompanionBuilder =
+    CleaningRecordsCompanion Function({
+      Value<int> id,
+      required String plate,
+      required String serviceType,
+      required double baseCost,
+      required double finalCost,
+      Value<double> discountPercent,
+      Value<bool> isLargeVehicle,
+      Value<bool> wasParkingCar,
+      Value<String> status,
+      Value<String?> notes,
+      required DateTime createdAt,
+      Value<DateTime?> completedAt,
+    });
+typedef $$CleaningRecordsTableUpdateCompanionBuilder =
+    CleaningRecordsCompanion Function({
+      Value<int> id,
+      Value<String> plate,
+      Value<String> serviceType,
+      Value<double> baseCost,
+      Value<double> finalCost,
+      Value<double> discountPercent,
+      Value<bool> isLargeVehicle,
+      Value<bool> wasParkingCar,
+      Value<String> status,
+      Value<String?> notes,
+      Value<DateTime> createdAt,
+      Value<DateTime?> completedAt,
+    });
+
+class $$CleaningRecordsTableFilterComposer
+    extends Composer<_$AppDatabase, $CleaningRecordsTable> {
+  $$CleaningRecordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get plate => $composableBuilder(
+    column: $table.plate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serviceType => $composableBuilder(
+    column: $table.serviceType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get baseCost => $composableBuilder(
+    column: $table.baseCost,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get finalCost => $composableBuilder(
+    column: $table.finalCost,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get discountPercent => $composableBuilder(
+    column: $table.discountPercent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isLargeVehicle => $composableBuilder(
+    column: $table.isLargeVehicle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get wasParkingCar => $composableBuilder(
+    column: $table.wasParkingCar,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CleaningRecordsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CleaningRecordsTable> {
+  $$CleaningRecordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get plate => $composableBuilder(
+    column: $table.plate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serviceType => $composableBuilder(
+    column: $table.serviceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get baseCost => $composableBuilder(
+    column: $table.baseCost,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get finalCost => $composableBuilder(
+    column: $table.finalCost,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get discountPercent => $composableBuilder(
+    column: $table.discountPercent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isLargeVehicle => $composableBuilder(
+    column: $table.isLargeVehicle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get wasParkingCar => $composableBuilder(
+    column: $table.wasParkingCar,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CleaningRecordsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CleaningRecordsTable> {
+  $$CleaningRecordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get plate =>
+      $composableBuilder(column: $table.plate, builder: (column) => column);
+
+  GeneratedColumn<String> get serviceType => $composableBuilder(
+    column: $table.serviceType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get baseCost =>
+      $composableBuilder(column: $table.baseCost, builder: (column) => column);
+
+  GeneratedColumn<double> get finalCost =>
+      $composableBuilder(column: $table.finalCost, builder: (column) => column);
+
+  GeneratedColumn<double> get discountPercent => $composableBuilder(
+    column: $table.discountPercent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isLargeVehicle => $composableBuilder(
+    column: $table.isLargeVehicle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get wasParkingCar => $composableBuilder(
+    column: $table.wasParkingCar,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$CleaningRecordsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CleaningRecordsTable,
+          CleaningRecord,
+          $$CleaningRecordsTableFilterComposer,
+          $$CleaningRecordsTableOrderingComposer,
+          $$CleaningRecordsTableAnnotationComposer,
+          $$CleaningRecordsTableCreateCompanionBuilder,
+          $$CleaningRecordsTableUpdateCompanionBuilder,
+          (
+            CleaningRecord,
+            BaseReferences<
+              _$AppDatabase,
+              $CleaningRecordsTable,
+              CleaningRecord
+            >,
+          ),
+          CleaningRecord,
+          PrefetchHooks Function()
+        > {
+  $$CleaningRecordsTableTableManager(
+    _$AppDatabase db,
+    $CleaningRecordsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CleaningRecordsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CleaningRecordsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CleaningRecordsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> plate = const Value.absent(),
+                Value<String> serviceType = const Value.absent(),
+                Value<double> baseCost = const Value.absent(),
+                Value<double> finalCost = const Value.absent(),
+                Value<double> discountPercent = const Value.absent(),
+                Value<bool> isLargeVehicle = const Value.absent(),
+                Value<bool> wasParkingCar = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> completedAt = const Value.absent(),
+              }) => CleaningRecordsCompanion(
+                id: id,
+                plate: plate,
+                serviceType: serviceType,
+                baseCost: baseCost,
+                finalCost: finalCost,
+                discountPercent: discountPercent,
+                isLargeVehicle: isLargeVehicle,
+                wasParkingCar: wasParkingCar,
+                status: status,
+                notes: notes,
+                createdAt: createdAt,
+                completedAt: completedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String plate,
+                required String serviceType,
+                required double baseCost,
+                required double finalCost,
+                Value<double> discountPercent = const Value.absent(),
+                Value<bool> isLargeVehicle = const Value.absent(),
+                Value<bool> wasParkingCar = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                required DateTime createdAt,
+                Value<DateTime?> completedAt = const Value.absent(),
+              }) => CleaningRecordsCompanion.insert(
+                id: id,
+                plate: plate,
+                serviceType: serviceType,
+                baseCost: baseCost,
+                finalCost: finalCost,
+                discountPercent: discountPercent,
+                isLargeVehicle: isLargeVehicle,
+                wasParkingCar: wasParkingCar,
+                status: status,
+                notes: notes,
+                createdAt: createdAt,
+                completedAt: completedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CleaningRecordsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CleaningRecordsTable,
+      CleaningRecord,
+      $$CleaningRecordsTableFilterComposer,
+      $$CleaningRecordsTableOrderingComposer,
+      $$CleaningRecordsTableAnnotationComposer,
+      $$CleaningRecordsTableCreateCompanionBuilder,
+      $$CleaningRecordsTableUpdateCompanionBuilder,
+      (
+        CleaningRecord,
+        BaseReferences<_$AppDatabase, $CleaningRecordsTable, CleaningRecord>,
+      ),
+      CleaningRecord,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4945,4 +6182,6 @@ class $AppDatabaseManager {
       $$LargeVehiclePlatesTableTableManager(_db, _db.largeVehiclePlates);
   $$RegisteredVehiclesTableTableManager get registeredVehicles =>
       $$RegisteredVehiclesTableTableManager(_db, _db.registeredVehicles);
+  $$CleaningRecordsTableTableManager get cleaningRecords =>
+      $$CleaningRecordsTableTableManager(_db, _db.cleaningRecords);
 }

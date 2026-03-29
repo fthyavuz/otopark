@@ -207,6 +207,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     color: Colors.brown,
                     onTap: () => context.push('/tariff'),
                   ),
+                  _ActionCard(
+                    label: 'Oto Temizlik',
+                    icon: Icons.local_car_wash,
+                    color: Colors.teal,
+                    onTap: () => context.push('/cleaning'),
+                  ),
                 ],
               ),
             ),

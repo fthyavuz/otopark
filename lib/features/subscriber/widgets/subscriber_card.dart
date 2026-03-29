@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../shared/providers/database_provider.dart';
+import '../subscriber_dialogs.dart';
 import '../subscriber_models.dart';
 import 'subscriber_form_sheet.dart';
 
@@ -47,6 +48,10 @@ class SubscriberCard extends ConsumerWidget {
                     const SizedBox(height: 4),
                     if (item.type == SubType.monthly)
                       _StatusBadge(status: item.status),
+                    if (item.isFeeDue) ...[
+                      const SizedBox(height: 4),
+                      _FeeDueBadge(),
+                    ],
                   ],
                 ),
               ],
@@ -103,14 +108,28 @@ class SubscriberCard extends ConsumerWidget {
                           horizontal: 12, vertical: 6)),
                 ),
                 const SizedBox(width: 8),
-                // Renew — only meaningful for monthly subscribers
+                if (item.type == SubType.monthly && item.isFeeDue)
+                  OutlinedButton.icon(
+                    onPressed: () => showSubscriberPaymentDialog(
+                        context, ref, item),
+                    icon: const Icon(Icons.payments_outlined, size: 16),
+                    label: const Text('Ücret Al'),
+                    style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue.shade700,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6)),
+                  ),
+                if (item.type == SubType.monthly && item.isFeeDue)
+                  const SizedBox(width: 8),
                 if (item.type == SubType.monthly)
                   OutlinedButton.icon(
                     onPressed: () => _showRenewDialog(context, ref),
                     icon: const Icon(Icons.autorenew, size: 16),
                     label: const Text('Yenile'),
                     style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.green,
+                        foregroundColor: item.isNearingExpiry
+                            ? Colors.orange.shade700
+                            : Colors.green,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6)),
                   ),
@@ -313,6 +332,35 @@ class _StatusBadge extends StatelessWidget {
       child: Text(label,
           style: TextStyle(
               fontSize: 11, fontWeight: FontWeight.bold, color: fg)),
+    );
+  }
+}
+
+class _FeeDueBadge extends StatelessWidget {
+  const _FeeDueBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.red.shade300),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.payments_outlined,
+              size: 11, color: Colors.red.shade700),
+          const SizedBox(width: 4),
+          Text('ÜCRET BEKLİYOR',
+              style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red.shade700)),
+        ],
+      ),
     );
   }
 }

@@ -1,15 +1,12 @@
 // Turkish license plate format:
-// [City code 01-81] [1-3 letters] [2-4 digits]
-// Valid letters: A B C D E F G H I J K L M N O P R S T U V Y Z
-// (no Q, W, X and no Turkish special chars on plates)
-//
-// Examples: 34ABC1234  06A123  35BT42
+// [City code 00-89] [1-3 letters] [2-5 digits]
+// Examples: 34 ABC 1234  06 A 123  35 BT 42
 
 class PlateValidator {
   PlateValidator._();
 
   static final _turkishPlateRegex = RegExp(
-    r'^(0[1-9]|[1-7][0-9]|8[01])\s?([A-BDFGHJKLMNOPRSTUVYZ]{1,3})\s?(\d{2,4})$',
+    r'^[0-8][0-9]\s[A-Z]{1,3}\s[0-9]{2,5}$',
     caseSensitive: false,
   );
 

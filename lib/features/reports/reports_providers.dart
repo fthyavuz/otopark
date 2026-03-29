@@ -21,3 +21,20 @@ final customReportDataProvider =
       .watchRecordsByDateRange(range.$1, range.$2)
       .map(ReportData.fromRecords);
 });
+
+final cleaningReportDataProvider =
+    StreamProvider.family<CleaningReportData, ReportPeriod>((ref, period) {
+  final db = ref.watch(databaseProvider);
+  final (from, to) = period.dateRange;
+  return db
+      .watchCleaningRecordsByDateRange(from, to)
+      .map(CleaningReportData.fromRecords);
+});
+
+final customCleaningReportDataProvider =
+    StreamProvider.family<CleaningReportData, (DateTime, DateTime)>((ref, range) {
+  final db = ref.watch(databaseProvider);
+  return db
+      .watchCleaningRecordsByDateRange(range.$1, range.$2)
+      .map(CleaningReportData.fromRecords);
+});

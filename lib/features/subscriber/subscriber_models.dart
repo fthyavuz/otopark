@@ -29,6 +29,30 @@ class SubscriberWithPlates {
   int get daysRemaining =>
       subscriber.endDate.difference(DateTime.now()).inDays;
 
+  /// True when the monthly fee for the current subscription period has not been paid yet.
+  bool get isFeeDue {
+    if (type != SubType.monthly) return false;
+    if (status == SubStatus.expired) return false;
+    final paidUntil = subscriber.feePaidUntil;
+    if (paidUntil == null) return true;
+    return paidUntil.isBefore(subscriber.endDate);
+  }
+
+  /// True when the fee is due AND the payment reminder has not been snoozed.
+  bool get shouldShowPaymentReminder {
+    if (!isFeeDue) return false;
+    final snoozed = subscriber.paymentSnoozedUntil;
+    if (snoozed != null && snoozed.isAfter(DateTime.now())) return false;
+    return true;
+  }
+
+  /// True when a monthly subscriber has 30 or fewer days left (but not expired).
+  bool get isNearingExpiry =>
+      type == SubType.monthly &&
+      status != SubStatus.expired &&
+      daysRemaining > 0 &&
+      daysRemaining <= 30;
+
   /// Human-readable status label in Turkish.
   String get statusLabel {
     // Daily subscribers don't expire in the traditional sense.

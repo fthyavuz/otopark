@@ -10,6 +10,7 @@ import 'tables/parking_records.dart';
 import 'tables/subscribers.dart';
 import 'tables/large_vehicle_plates.dart';
 import 'tables/registered_vehicles.dart';
+import 'tables/cleaning_records.dart';
 
 part 'database.g.dart';
 
@@ -20,12 +21,13 @@ part 'database.g.dart';
   SubscriberPlates,
   LargeVehiclePlates,
   RegisteredVehicles,
+  CleaningRecords,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -46,6 +48,16 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 4) {
             await m.addColumn(tariffs, tariffs.dailySubscriptionPrice);
+          }
+          if (from < 5) {
+            await m.addColumn(subscribers, subscribers.feePaidUntil);
+            await m.addColumn(subscribers, subscribers.paymentSnoozedUntil);
+          }
+          if (from < 6) {
+            await m.createTable(cleaningRecords);
+          }
+          if (from < 7) {
+            await m.addColumn(cleaningRecords, cleaningRecords.notes);
           }
         },
       );
@@ -271,6 +283,21 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
 
+  Future<void> markSubscriptionFeePaid(int id, DateTime paidUntil) =>
+      (update(subscribers)..where((s) => s.id.equals(id))).write(
+        SubscribersCompanion(
+          feePaidUntil: Value(paidUntil),
+          paymentSnoozedUntil: const Value(null),
+        ),
+      );
+
+  Future<void> snoozePaymentReminder(int id, DateTime until) =>
+      (update(subscribers)..where((s) => s.id.equals(id))).write(
+        SubscribersCompanion(
+          paymentSnoozedUntil: Value(until),
+        ),
+      );
+
   Future<void> replaceSubscriberPlates(
       int subscriberId, List<String> plates) async {
     await transaction(() async {
@@ -419,6 +446,73 @@ class AppDatabase extends _$AppDatabase {
           ..limit(1))
         .get();
     return rows.isNotEmpty;
+  }
+
+  // ─── Cleaning record queries ───────────────────────────────────────────
+
+  Future<int> insertCleaningRecord(CleaningRecordsCompanion entry) =>
+      into(cleaningRecords).insert(entry);
+
+  Future<bool> updateCleaningRecord(CleaningRecordsCompanion entry) =>
+      update(cleaningRecords).replace(entry);
+
+  Future<int> deleteCleaningRecord(int id) =>
+      (delete(cleaningRecords)..where((r) => r.id.equals(id))).go();
+
+  Stream<List<CleaningRecord>> watchAllCleaningRecords() =>
+      (select(cleaningRecords)
+            ..orderBy([(r) => OrderingTerm.desc(r.createdAt)]))
+          .watch();
+
+  Stream<List<CleaningRecord>> watchCleaningRecordsByDateRange(
+          DateTime from, DateTime to) =>
+      (select(cleaningRecords)
+            ..where((r) =>
+                r.createdAt.isBiggerOrEqualValue(from) &
+                r.createdAt.isSmallerOrEqualValue(to) &
+                r.status.equals('cleaned'))
+            ..orderBy([(r) => OrderingTerm.desc(r.createdAt)]))
+          .watch();
+
+  Future<List<CleaningRecord>> getCleaningRecordsByDateRange(
+          DateTime from, DateTime to) =>
+      (select(cleaningRecords)
+            ..where((r) =>
+                r.createdAt.isBiggerOrEqualValue(from) &
+                r.createdAt.isSmallerOrEqualValue(to) &
+                r.status.equals('cleaned')))
+          .get();
+
+  /// Returns today's paid cleaning record for a plate that was a parking car.
+  /// Used by the exit screen to show "already cleaned" info.
+  Future<CleaningRecord?> getTodayCleaningForParkingCar(String plate) async {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = todayStart.add(const Duration(days: 1));
+    return (select(cleaningRecords)
+          ..where((r) =>
+              r.plate.equals(plate.toUpperCase()) &
+              r.wasParkingCar.equals(true) &
+              r.status.equals('cleaned') &
+              r.createdAt.isBiggerOrEqualValue(todayStart) &
+              r.createdAt.isSmallerOrEqualValue(todayEnd))
+          ..orderBy([(r) => OrderingTerm.desc(r.createdAt)])
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  Stream<double> watchTodayCleaningRevenue() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    return (select(cleaningRecords)
+          ..where((r) =>
+              r.createdAt.isBiggerOrEqualValue(today) &
+              r.createdAt.isSmallerOrEqualValue(tomorrow) &
+              r.status.equals('cleaned')))
+        .watch()
+        .map((list) =>
+            list.fold(0.0, (sum, r) => sum + r.finalCost));
   }
 }
 

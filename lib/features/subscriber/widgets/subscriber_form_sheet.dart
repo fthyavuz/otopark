@@ -62,10 +62,9 @@ class _SubscriberFormSheetState extends ConsumerState<SubscriberFormSheet> {
     );
 
     final now = DateTime.now();
-    _startDate = ex?.subscriber.startDate ??
-        DateTime(now.year, now.month, 1);
-    _endDate = ex?.subscriber.endDate ??
-        DateTime(now.year, now.month + 1, 0);
+    final today = DateTime(now.year, now.month, now.day);
+    _startDate = ex?.subscriber.startDate ?? today;
+    _endDate = ex?.subscriber.endDate ?? addOneMonth(today);
 
     if (ex != null && ex.plates.isNotEmpty) {
       for (final p in ex.plates) {

@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../shared/providers/settings_provider.dart';
+import '../../shared/utils/currency_formatter.dart';
 import '../active_cars/active_cars_providers.dart';
 import 'reports_models.dart';
 import 'reports_providers.dart';
-import 'widgets/report_stats_grid.dart';
 import 'widgets/transaction_tile.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
@@ -37,6 +38,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       return const AsyncValue.data(ReportData.empty);
     }
     return ref.watch(customReportDataProvider((_customFrom!, _customTo!)));
+  }
+
+  AsyncValue<CleaningReportData> get _cleaningAsync {
+    if (!_isCustom) return ref.watch(cleaningReportDataProvider(_period!));
+    if (_customFrom == null || _customTo == null) {
+      return const AsyncValue.data(CleaningReportData.empty);
+    }
+    return ref.watch(customCleaningReportDataProvider((_customFrom!, _customTo!)));
   }
 
   Future<void> _pickCustomRange() async {
@@ -129,10 +138,127 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Hata: $e')),
-              data: (data) => _ReportBody(
-                data: data,
-                showInsideNow: _period == ReportPeriod.today,
-              ),
+              data: (parkingData) {
+                final cleaningData =
+                    _cleaningAsync.value ?? CleaningReportData.empty;
+                final settings = ref.read(cleaningSettingsProvider);
+                final ratio = settings.parkingShareRatio;
+                final parkingSettlement =
+                    parkingData.totalRevenue + ratio * cleaningData.totalRevenue;
+                final cleaningSettlement =
+                    (1 - ratio) * cleaningData.totalRevenue;
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      // ── Two summary boxes ────────────────────────
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _ParkingBox(data: parkingData)),
+                          const SizedBox(width: 8),
+                          Expanded(child: _CleaningBox(data: cleaningData)),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // ── Settlement section ───────────────────────
+                      Card(
+                        color: Colors.grey.shade100,
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            children: [
+                              Text('Gün Sonu Kasa Dağılımı',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleSmall
+                                      ?.copyWith(
+                                          fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 10),
+                              // Row 1: Otopark Kasa | Temizlik Komisyon Kasa
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _SettlementTile(
+                                      label: 'Otopark Kasa',
+                                      subtitle: 'Sadece park geliri',
+                                      amount: parkingData.totalRevenue,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _SettlementTile(
+                                      label: 'Temizlik Komisyon Kasa',
+                                      subtitle:
+                                          '%${(ratio * 100).toStringAsFixed(0)} temizlik komisyonu',
+                                      amount: ratio * cleaningData.totalRevenue,
+                                      color: Colors.indigo,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              // Row 2: Temizlik İşletmeci Kasa (full width)
+                              _SettlementTile(
+                                label: 'Temizlik İşletmeci Kasa',
+                                subtitle:
+                                    '%${((1 - ratio) * 100).toStringAsFixed(0)} temizlik geliri',
+                                amount: cleaningSettlement,
+                                color: Colors.teal,
+                              ),
+                              const Divider(height: 20),
+                              // Otopark Toplamı
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('Otopark Toplamı',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15)),
+                                  Text(
+                                    CurrencyFormatter.format(parkingSettlement),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // ── Currently inside (today only) ────────────
+                      if (_period == ReportPeriod.today)
+                        _InsideNowBanner(),
+
+                      const SizedBox(height: 4),
+
+                      // ── Parking transaction list ─────────────────
+                      if (parkingData.records.isNotEmpty)
+                        ...parkingData.records
+                            .map((r) => TransactionTile(record: r)),
+                      if (parkingData.records.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(32),
+                          child: Text('Bu dönemde işlem yok.',
+                              style: TextStyle(color: Colors.grey)),
+                        ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -182,86 +308,6 @@ class _PeriodButtonRow extends StatelessWidget {
   }
 }
 
-// ─── Report body ──────────────────────────────────────────────────────────────
-
-class _ReportBody extends ConsumerWidget {
-  const _ReportBody({required this.data, required this.showInsideNow});
-
-  final ReportData data;
-  final bool showInsideNow;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return CustomScrollView(
-      slivers: [
-        // ── Stats grid ──────────────────────────────────────────
-        SliverToBoxAdapter(
-          child: ReportStatsGrid(data: data),
-        ),
-
-        // ── Currently inside (today only) ───────────────────────
-        if (showInsideNow)
-          SliverToBoxAdapter(
-            child: _InsideNowBanner(),
-          ),
-
-        // ── Transactions header ─────────────────────────────────
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-            child: Row(
-              children: [
-                Text(
-                  'İşlemler',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${data.totalTransactions}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onPrimaryContainer,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // ── Transaction list ────────────────────────────────────
-        if (data.records.isEmpty)
-          const SliverFillRemaining(
-            child: _EmptyTransactions(),
-          )
-        else
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (_, i) => TransactionTile(record: data.records[i]),
-              childCount: data.records.length,
-            ),
-          ),
-
-        // Bottom padding
-        const SliverToBoxAdapter(child: SizedBox(height: 32)),
-      ],
-    );
-  }
-}
-
 // ─── Currently inside banner ──────────────────────────────────────────────────
 
 class _InsideNowBanner extends ConsumerWidget {
@@ -277,7 +323,7 @@ class _InsideNowBanner extends ConsumerWidget {
         return GestureDetector(
           onTap: () => context.go('/active-cars'),
           child: Container(
-            margin: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+            margin: const EdgeInsets.fromLTRB(0, 0, 0, 8),
             padding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
@@ -310,31 +356,186 @@ class _InsideNowBanner extends ConsumerWidget {
   }
 }
 
-// ─── Active tariff info widget ────────────────────────────────────────────────
+// ─── Parking summary box ──────────────────────────────────────────────────────
 
-class _EmptyTransactions extends StatelessWidget {
-  const _EmptyTransactions();
+class _ParkingBox extends StatelessWidget {
+  const _ParkingBox({required this.data});
+
+  final ReportData data;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    final b = data.parkingBreakdown;
+    return Card(
+      color: Colors.blue.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Icon(Icons.local_parking, color: Colors.blue.shade700, size: 18),
+              const SizedBox(width: 6),
+              Text('Park Geliri',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade800)),
+            ]),
+            const SizedBox(height: 8),
+            _row('Normal Araç', b.normalCount, b.normalRevenue),
+            _row('Günlük Abone', b.dailyCount, b.dailyRevenue),
+            _row('Aylık Abonman', b.monthlyPaymentCount,
+                b.monthlyPaymentRevenue),
+            const Divider(height: 12),
+            _totalRow(b.totalRevenue, Colors.blue.shade700),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _row(String label, int count, double revenue) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(Icons.receipt_long_outlined,
-              size: 64, color: Colors.grey.shade300),
-          const SizedBox(height: 12),
-          Text(
-            'Bu dönem için kayıt yok',
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(color: Colors.grey),
+          Flexible(
+            child: Text('$label ($count)',
+                style: const TextStyle(fontSize: 11, color: Colors.black87),
+                overflow: TextOverflow.ellipsis),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'Araç çıkışları burada görünecek.',
-            style: TextStyle(color: Colors.grey),
+          Text(CurrencyFormatter.format(revenue),
+              style:
+                  const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _totalRow(double total, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text('Toplam',
+            style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+        Text(CurrencyFormatter.format(total),
+            style: TextStyle(
+                fontWeight: FontWeight.bold, color: color, fontSize: 14)),
+      ],
+    );
+  }
+}
+
+// ─── Cleaning summary box ─────────────────────────────────────────────────────
+
+class _CleaningBox extends StatelessWidget {
+  const _CleaningBox({required this.data});
+
+  final CleaningReportData data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Colors.teal.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Icon(Icons.local_car_wash,
+                  color: Colors.teal.shade700, size: 18),
+              const SizedBox(width: 6),
+              Text('Temizlik Geliri',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.teal.shade800)),
+            ]),
+            const SizedBox(height: 8),
+            _row('İç', data.interiorCount, data.interiorRevenue),
+            _row('Dış', data.exteriorCount, data.exteriorRevenue),
+            _row('İç+Dış', data.interiorExteriorCount,
+                data.interiorExteriorRevenue),
+            _row('Tam', data.fullCount, data.fullRevenue),
+            const Divider(height: 12),
+            _totalRow(data.totalRevenue, Colors.teal.shade700),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _row(String label, int count, double revenue) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text('$label ($count)',
+              style: const TextStyle(fontSize: 11, color: Colors.black87)),
+          Text(CurrencyFormatter.format(revenue),
+              style:
+                  const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _totalRow(double total, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text('Toplam',
+            style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+        Text(CurrencyFormatter.format(total),
+            style: TextStyle(
+                fontWeight: FontWeight.bold, color: color, fontSize: 14)),
+      ],
+    );
+  }
+}
+
+// ─── Settlement tile ──────────────────────────────────────────────────────────
+
+class _SettlementTile extends StatelessWidget {
+  const _SettlementTile({
+    required this.label,
+    required this.subtitle,
+    required this.amount,
+    required this.color,
+  });
+
+  final String label;
+  final String subtitle;
+  final double amount;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, color: color, fontSize: 13)),
+          Text(subtitle,
+              style: TextStyle(
+                  fontSize: 10, color: color.withValues(alpha: 0.7))),
+          const SizedBox(height: 6),
+          FittedBox(
+            child: Text(
+              CurrencyFormatter.format(amount),
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, fontSize: 18, color: color),
+            ),
           ),
         ],
       ),
